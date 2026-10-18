@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express, { type Application, type Request, type Response } from 'express';
 import { errorHandler } from './middleware/errorHandler';
+import aiRoutes from './routes/aiRoutes';
 import authRoutes from './routes/authRoutes';
 import customerRoutes from './routes/customerRoutes';
 import userRoutes from './routes/userRoutes';
@@ -27,6 +28,7 @@ export const createApp = (): Application => {
   app.use('/api/v1/work-orders', workOrderRoutes);
   app.use('/api/v1/customers', customerRoutes);
   app.use('/api/v1/users', userRoutes);
+  app.use('/api/v1/ai', aiRoutes);
 
   app.use((_req: Request, _res: Response, next) => {
     next(new NotFoundError('The requested API endpoint does not exist'));
