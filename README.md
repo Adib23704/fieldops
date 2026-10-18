@@ -47,7 +47,7 @@ Built with Express, Prisma, PostgreSQL, Next.js 16, and Tailwind CSS.
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── app/            # Next.js App Router (dashboard, orders, triage, customers)
+│   │   ├── app/            # Next.js App Router (orders, customers, technicians, triage)
 │   │   ├── components/     # UI components (sidebar, order drawer, modals, badges)
 │   │   ├── context/        # Auth context & session provider
 │   │   └── lib/            # API client & TypeScript interfaces
@@ -237,27 +237,35 @@ If an overlap is detected, the API returns HTTP `409 Conflict` with details of t
 
 ## API Overview
 
-All protected endpoints require an `Authorization: Bearer <token>` header.
+All protected endpoints require an `Authorization: Bearer <token>` header. RBAC rules strictly enforce role permissions (rejecting unauthorized roles with HTTP `403 Forbidden`).
 
-### Authentication
-- `POST /api/v1/auth/login` - Log in and receive JWT
-- `GET /api/v1/auth/me` - Get current user profile
-- `GET /api/v1/technicians` - List technicians with skills and workload
+### System Health
+- `GET /api/v1/health` - Service health and operational status check `(Public)`
+
+### Authentication & Users
+- `POST /api/v1/auth/login` - Authenticate user credentials and receive JWT `(Public)`
+- `GET /api/v1/auth/me` - Retrieve current authenticated user profile `(All roles)`
+- `GET /api/v1/users/technicians` - List technicians with trade skills, workload, and assignments `(Admin, Dispatcher)`
+- `POST /api/v1/users/technicians` - Register a new field technician with trade competencies `(Admin only)`
+- `PATCH /api/v1/users/technicians/:id` - Update technician details, trade skills, and active status `(Admin only)`
 
 ### Work Orders
-- `GET /api/v1/work-orders` - List work orders (filters: `status`, `priority`, `technicianId`, `search`)
-- `POST /api/v1/work-orders` - Create new work order
-- `GET /api/v1/work-orders/:id` - Get full work order details, items, and status history
-- `PATCH /api/v1/work-orders/:id/status` - Transition work order status
-- `POST /api/v1/work-orders/:id/items` - Add a labor or part line item
-- `DELETE /api/v1/work-orders/:id/items/:itemId` - Remove a line item
+- `GET /api/v1/work-orders` - List work orders with pagination, search, and filters `(Role-scoped for Technicians)`
+- `POST /api/v1/work-orders` - Create work order with automated code generation `(Admin, Dispatcher)`
+- `GET /api/v1/work-orders/:id` - Get full work order details, items, customer, and audit history `(All roles)`
+- `PATCH /api/v1/work-orders/:id` - Update work order details, technician, and schedule with conflict checking `(Admin only)`
+- `PATCH /api/v1/work-orders/:id/status` - Transition work order status (enforces state machine & schedule conflict checks) `(All roles)`
+- `POST /api/v1/work-orders/:id/items` - Add a labor or part line item with auto-calculated 8.25% sales tax `(All roles)`
+- `DELETE /api/v1/work-orders/:id/items/:itemId` - Remove a line item and recalculate order financial totals `(All roles)`
 
 ### Customers
-- `GET /api/v1/customers` - List customers with active order counts
-- `POST /api/v1/customers` - Create a new customer profile
+- `GET /api/v1/customers` - List customer accounts with active work order counts `(Admin, Dispatcher)`
+- `GET /api/v1/customers/:id` - Retrieve customer profile with associated work orders `(Admin, Dispatcher)`
+- `POST /api/v1/customers` - Create a new customer profile `(Admin, Dispatcher)`
+- `PATCH /api/v1/customers/:id` - Update customer profile and site details `(Admin only)`
 
 ### AI Triage
-- `POST /api/v1/ai/triage` - Run triage analysis on complaint text
-- `GET /api/v1/ai/metrics` - Get triage metrics (total requests, fallback rate, agreement rate)
-- `GET /api/v1/ai/logs` - Get recent triage audit logs
-- `POST /api/v1/ai/evaluate` - Submit dispatcher agree/override review
+- `POST /api/v1/ai/triage` - Run AI triage analysis & technician recommendation on complaint text `(Admin, Dispatcher)`
+- `GET /api/v1/ai/metrics` - Retrieve aggregate triage telemetry (fallback frequency, agreement rate) `(Admin, Dispatcher)`
+- `GET /api/v1/ai/logs` - Retrieve recent triage audit logs `(Admin, Dispatcher)`
+- `PATCH /api/v1/ai/logs/:id/evaluate` - Submit dispatcher concordance review or urgency override `(Admin, Dispatcher)`
