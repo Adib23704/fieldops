@@ -2,6 +2,7 @@
   "name": "fieldops-backend",
   "version": "1.0.0",
   "description": "FieldOps Dispatch and Work Order Management API",
+  "private": true,
   "main": "dist/server.js",
   "scripts": {
     "build": "prisma generate && tsc",
