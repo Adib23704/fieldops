@@ -446,7 +446,7 @@ export default function TriageStudioPage() {
                   </tr>
                 ) : (
                   logs.map((log) => {
-                    const promptText = log.rawPromptText || log.inputDescription || '—';
+                    const promptText = log.rawPromptText || log.inputDescription || '-';
                     const isEvaluated = Boolean(
                       log.evaluatedAt ||
                         log.dispatcherOverrideUrgency ||
