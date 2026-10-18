@@ -1,7 +1,15 @@
 'use client';
 
-import { AlertCircle, ChevronRight, Plus, RefreshCw, Search, User, Wrench } from 'lucide-react';
-import Link from 'next/link';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Plus,
+  RefreshCw,
+  Search,
+  Wrench,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../../api/client';
 import { CreateOrderModal } from '../../../components/CreateOrderModal';
@@ -17,7 +25,7 @@ const STATUS_FILTERS: Array<{ id: string; label: string }> = [
   { id: 'SCHEDULED', label: 'Scheduled' },
   { id: 'DISPATCHED', label: 'Dispatched' },
   { id: 'IN_PROGRESS', label: 'In Progress' },
-  { id: 'PENDING_PARTS', label: 'Pending Parts' },
+  { id: 'PENDING_PARTS', label: 'Parts Hold' },
   { id: 'COMPLETED', label: 'Completed' },
   { id: 'CANCELLED', label: 'Cancelled' },
 ];
@@ -64,7 +72,7 @@ export default function WorkOrdersPage() {
       setOrders(res.items);
       setTotalCount(res.pagination.total);
     } catch {
-      setError('Failed to fetch work orders.');
+      setError('Unable to load work orders. Please check your connection and retry.');
     } finally {
       setIsLoading(false);
     }
@@ -100,43 +108,44 @@ export default function WorkOrdersPage() {
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '—';
+    if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     });
   };
 
+  const inProgressCount = orders.filter(
+    (o) => o.status === 'IN_PROGRESS' || o.status === 'DISPATCHED'
+  ).length;
+  const partsHoldCount = orders.filter((o) => o.status === 'PENDING_PARTS').length;
+  const completedCount = orders.filter((o) => o.status === 'COMPLETED').length;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-zinc-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">Work Orders</h1>
-            <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-              {totalCount} Total
-            </span>
-          </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Dispatch queue, active state machine progression, and crew assignments.
+          <h1 className="text-xl font-bold text-slate-100 tracking-tight">Work Orders</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            Real-time field service dispatch queue and job lifecycle board
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => fetchOrders()}
-            className="p-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 border border-zinc-700 rounded transition-colors"
-            title="Refresh Orders"
+            className="p-2 text-slate-400 hover:text-slate-100 hover:bg-[#151923] border border-[#202634] rounded-lg transition-colors cursor-pointer"
+            title="Refresh queue"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-4 h-4" />
           </button>
 
           {user?.role !== 'TECHNICIAN' && (
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded bg-amber-500 hover:bg-amber-400 text-zinc-950 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-500/20 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               New Work Order
@@ -145,8 +154,56 @@ export default function WorkOrdersPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-3.5 rounded-xl border border-[#1e2432] bg-[#10131a] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-400">Total in View</span>
+            <div className="text-lg font-bold text-slate-100 mt-0.5 font-mono">{totalCount}</div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-300">
+            <Clock className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-[#1e2432] bg-[#10131a] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-400">Active in Field</span>
+            <div className="text-lg font-bold text-blue-400 mt-0.5 font-mono">
+              {inProgressCount}
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-blue-950/50 border border-blue-800/40 flex items-center justify-center text-blue-400">
+            <Wrench className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-[#1e2432] bg-[#10131a] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-400">Parts Hold</span>
+            <div className="text-lg font-bold text-orange-400 mt-0.5 font-mono">
+              {partsHoldCount}
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-orange-950/50 border border-orange-800/40 flex items-center justify-center text-orange-400">
+            <AlertCircle className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl border border-[#1e2432] bg-[#10131a] flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-400">Completed</span>
+            <div className="text-lg font-bold text-emerald-400 mt-0.5 font-mono">
+              {completedCount}
+            </div>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-950/50 border border-emerald-800/40 flex items-center justify-center text-emerald-400">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {STATUS_FILTERS.map((tab) => {
             const isActive = selectedStatus === tab.id;
             return (
@@ -154,10 +211,10 @@ export default function WorkOrdersPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedStatus(tab.id)}
-                className={`text-xs px-3 py-1.5 rounded font-mono transition-colors whitespace-nowrap ${
+                className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors whitespace-nowrap cursor-pointer ${
                   isActive
-                    ? 'bg-amber-500 text-zinc-950 font-semibold shadow-xs'
-                    : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 border border-zinc-800'
+                    ? 'bg-blue-600/15 text-blue-400 border-blue-500/30'
+                    : 'bg-[#10131a] text-slate-400 hover:text-slate-200 hover:bg-[#151923] border-[#1e2432]'
                 }`}
               >
                 {tab.label}
@@ -166,15 +223,15 @@ export default function WorkOrdersPage() {
           })}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-1">
+        <div className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
             <input
               type="text"
-              placeholder="Filter by title, order #, or description..."
+              placeholder="Search by order #, title, or customer site..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs rounded border border-zinc-800 bg-zinc-900 text-zinc-100 pl-9 pr-3 py-2 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full text-xs rounded-lg border border-[#202634] bg-[#10131a] text-slate-100 pl-9 pr-3.5 py-2 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
             />
           </div>
 
@@ -182,20 +239,20 @@ export default function WorkOrdersPage() {
             <select
               value={selectedPriority}
               onChange={(e) => setSelectedPriority(e.target.value)}
-              className="text-xs rounded border border-zinc-800 bg-zinc-900 text-zinc-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="text-xs rounded-lg border border-[#202634] bg-[#10131a] text-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
             >
               <option value="">All Priorities</option>
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
+              <option value="EMERGENCY">Urgent</option>
               <option value="HIGH">High</option>
-              <option value="EMERGENCY">Emergency</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
             </select>
 
             {user?.role !== 'TECHNICIAN' && (
               <select
                 value={selectedTech}
                 onChange={(e) => setSelectedTech(e.target.value)}
-                className="text-xs rounded border border-zinc-800 bg-zinc-900 text-zinc-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="text-xs rounded-lg border border-[#202634] bg-[#10131a] text-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
               >
                 <option value="">All Technicians</option>
                 {technicians.map((t) => (
@@ -205,134 +262,163 @@ export default function WorkOrdersPage() {
                 ))}
               </select>
             )}
+
+            {(selectedStatus !== 'ALL' || selectedPriority || searchQuery || selectedTech) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedStatus('ALL');
+                  setSelectedPriority('');
+                  setSearchQuery('');
+                  setSelectedTech('');
+                }}
+                className="text-xs text-slate-400 hover:text-slate-200 px-2.5 py-2 rounded-lg border border-[#202634] hover:bg-[#151923] transition-colors"
+                title="Reset filters"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {error && (
-        <div className="p-3 rounded bg-red-950/40 border border-red-800/60 text-red-300 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="rounded border border-zinc-800 bg-zinc-900/60 overflow-hidden shadow-sm">
-        {isLoading ? (
-          <div className="p-12 text-center text-zinc-500 flex flex-col items-center justify-center gap-2 font-mono text-xs">
-            <div className="w-5 h-5 border-2 border-zinc-600 border-t-amber-500 rounded-full animate-spin" />
-            <span>Loading dispatch queue...</span>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="p-12 text-center text-zinc-500 flex flex-col items-center justify-center gap-2">
-            <Wrench className="w-8 h-8 text-zinc-600 stroke-1" />
-            <span className="text-xs font-mono">No work orders match the current criteria.</span>
-            {user?.role !== 'TECHNICIAN' && (
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="text-xs font-mono text-amber-400 hover:underline mt-1"
-              >
-                + Create new work order
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-800 bg-zinc-950/70 text-[11px] font-mono uppercase tracking-wider text-zinc-400">
-                  <th className="py-2.5 px-4 font-medium">Order #</th>
-                  <th className="py-2.5 px-4 font-medium">Customer & Site</th>
-                  <th className="py-2.5 px-4 font-medium">Title & Category</th>
-                  <th className="py-2.5 px-4 font-medium">Priority</th>
-                  <th className="py-2.5 px-4 font-medium">Status</th>
-                  <th className="py-2.5 px-4 font-medium">Assigned Tech</th>
-                  <th className="py-2.5 px-4 font-medium">Scheduled</th>
-                  <th className="py-2.5 px-4 font-medium text-right">Total</th>
-                  <th className="py-2.5 px-4 font-medium text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60 text-xs">
-                {orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    onClick={() => setSelectedOrder(order)}
-                    className="hover:bg-zinc-800/40 cursor-pointer transition-colors group"
-                  >
-                    <td className="py-3 px-4 font-mono font-semibold text-amber-400 whitespace-nowrap">
-                      {order.orderNumber}
-                    </td>
-
-                    <td className="py-3 px-4">
-                      {order.customer ? (
-                        <div className="flex flex-col max-w-45">
-                          <span className="font-medium text-zinc-200 truncate">
-                            {order.customer.companyName || order.customer.name}
-                          </span>
-                          <span className="text-[10px] text-zinc-400 font-mono truncate">
-                            {order.customer.city}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-zinc-500 font-mono">—</span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col max-w-55">
-                        <span className="font-medium text-zinc-100 truncate group-hover:text-amber-300 transition-colors">
-                          {order.title}
-                        </span>
-                        <span className="text-[10px] text-zinc-400 font-mono uppercase">
-                          {order.category}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <PriorityBadge priority={order.priority} />
-                    </td>
-
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <StatusBadge status={order.status} />
-                    </td>
-
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {order.technician ? (
-                        <div className="flex items-center gap-1.5 text-zinc-300">
-                          <User className="w-3 h-3 text-zinc-500" />
-                          <span>{order.technician.fullName}</span>
-                        </div>
-                      ) : (
-                        <span className="text-zinc-500 text-[11px] font-mono">Unassigned</span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-4 whitespace-nowrap font-mono text-zinc-400 text-[11px]">
-                      {formatDate(order.scheduledStart)}
-                    </td>
-
-                    <td className="py-3 px-4 text-right font-mono text-zinc-200 font-medium whitespace-nowrap">
-                      {formatCurrency(order.totalAmount)}
-                    </td>
-
-                    <td className="py-3 px-4 text-right whitespace-nowrap">
-                      <Link
-                        href={`/work-orders/${order.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 p-1 text-zinc-400 hover:text-amber-400 hover:bg-zinc-800 rounded transition-colors"
-                        title="View Full Lifecycle Details"
-                      >
-                        <span className="text-[11px] font-medium hidden sm:inline">Inspect</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="rounded-xl border border-[#1e2432] bg-[#11141c] overflow-hidden shadow-xs">
+        {error && (
+          <div className="p-4 bg-red-950/40 border-b border-red-800/40 text-red-200 text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-[#0c0e14] border-b border-[#1e2432] text-slate-400 font-medium uppercase tracking-wider">
+              <tr>
+                <th scope="col" className="py-3 px-4">
+                  Order
+                </th>
+                <th scope="col" className="py-3 px-4">
+                  Title & Scope
+                </th>
+                <th scope="col" className="py-3 px-4">
+                  Customer & Site
+                </th>
+                <th scope="col" className="py-3 px-4">
+                  Assigned Crew
+                </th>
+                <th scope="col" className="py-3 px-4">
+                  Scheduled
+                </th>
+                <th scope="col" className="py-3 px-4">
+                  Priority
+                </th>
+                <th scope="col" className="py-3 px-4">
+                  Status
+                </th>
+                <th scope="col" className="py-3 px-4 text-right">
+                  Total
+                </th>
+                <th scope="col" className="py-3 px-3 text-right">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1b202c]">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-slate-600 border-t-blue-500 rounded-full animate-spin" />
+                      <span>Loading work order queue...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : orders.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-1.5 max-w-sm mx-auto">
+                      <Clock className="w-6 h-6 text-slate-600 mb-1" />
+                      <span className="font-medium text-slate-300">No work orders found</span>
+                      <p className="text-xs text-slate-400">
+                        {searchQuery || selectedPriority || selectedStatus !== 'ALL'
+                          ? 'Try adjusting your search query or active filter settings.'
+                          : 'No field service orders have been registered yet.'}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order) => {
+                  return (
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelectedOrder(order)}
+                      className="hover:bg-[#161a24] transition-colors cursor-pointer group"
+                    >
+                      <td className="py-3.5 px-4 font-mono font-medium text-blue-400 whitespace-nowrap">
+                        {order.orderNumber}
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <div className="font-medium text-slate-200 line-clamp-1 group-hover:text-white transition-colors">
+                          {order.title}
+                        </div>
+                        <span className="text-[11px] text-slate-400">{order.category}</span>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <div className="text-slate-300 line-clamp-1">
+                          {order.customer?.companyName || order.customer?.name || '-'}
+                        </div>
+                        <span className="text-[11px] text-slate-400">
+                          {order.customer?.city || '-'}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        {order.technician ? (
+                          <div className="flex items-center gap-1.5 text-slate-300">
+                            <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-semibold text-slate-300 shrink-0">
+                              {order.technician.fullName.slice(0, 2).toUpperCase()}
+                            </div>
+                            <span className="truncate">{order.technician.fullName}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Unassigned</span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap font-mono text-[11px]">
+                        {formatDate(order.scheduledStart)}
+                      </td>
+
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <PriorityBadge priority={order.priority} />
+                      </td>
+
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <StatusBadge status={order.status} />
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-300 font-medium whitespace-nowrap">
+                        {formatCurrency(order.totalAmount)}
+                      </td>
+
+                      <td className="py-3.5 px-3 text-right">
+                        <span
+                          className="inline-flex p-1 text-slate-500 group-hover:text-blue-400 transition-colors"
+                          title="View order drawer"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <WorkOrderDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} />

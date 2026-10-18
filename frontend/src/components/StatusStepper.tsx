@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  Check,
   CheckCircle2,
   Clock,
   Play,
@@ -21,12 +22,12 @@ interface StatusStepperProps {
   userRole: string;
 }
 
-const ORDERED_STEPS: OrderStatus[] = [
-  'DRAFT',
-  'SCHEDULED',
-  'DISPATCHED',
-  'IN_PROGRESS',
-  'COMPLETED',
+const LIFECYCLE_STAGES: Array<{ status: OrderStatus; label: string }> = [
+  { status: 'DRAFT', label: 'Draft' },
+  { status: 'SCHEDULED', label: 'Scheduled' },
+  { status: 'DISPATCHED', label: 'Dispatched' },
+  { status: 'IN_PROGRESS', label: 'In Progress' },
+  { status: 'COMPLETED', label: 'Completed' },
 ];
 
 interface AllowedAction {
@@ -41,13 +42,13 @@ const NEXT_ACTIONS: Record<OrderStatus, AllowedAction[]> = {
   DRAFT: [
     {
       targetStatus: 'SCHEDULED',
-      label: 'Schedule & Assign',
+      label: 'Lock schedule & assign',
       icon: Clock,
       variant: 'primary',
     },
     {
       targetStatus: 'CANCELLED',
-      label: 'Cancel Order',
+      label: 'Cancel order',
       icon: XCircle,
       variant: 'danger',
       requiresReason: true,
@@ -56,19 +57,19 @@ const NEXT_ACTIONS: Record<OrderStatus, AllowedAction[]> = {
   SCHEDULED: [
     {
       targetStatus: 'DISPATCHED',
-      label: 'Dispatch Crew',
+      label: 'Dispatch technician',
       icon: Send,
       variant: 'primary',
     },
     {
       targetStatus: 'DRAFT',
-      label: 'Revert to Draft',
+      label: 'Revert to draft',
       icon: RotateCcw,
       variant: 'neutral',
     },
     {
       targetStatus: 'CANCELLED',
-      label: 'Cancel Order',
+      label: 'Cancel order',
       icon: XCircle,
       variant: 'danger',
       requiresReason: true,
@@ -77,19 +78,19 @@ const NEXT_ACTIONS: Record<OrderStatus, AllowedAction[]> = {
   DISPATCHED: [
     {
       targetStatus: 'IN_PROGRESS',
-      label: 'Start Work On-Site',
+      label: 'Start on-site work',
       icon: Play,
       variant: 'primary',
     },
     {
       targetStatus: 'SCHEDULED',
-      label: 'Recall Dispatch',
+      label: 'Recall dispatch',
       icon: RotateCcw,
       variant: 'neutral',
     },
     {
       targetStatus: 'CANCELLED',
-      label: 'Cancel Order',
+      label: 'Cancel order',
       icon: XCircle,
       variant: 'danger',
       requiresReason: true,
@@ -98,20 +99,20 @@ const NEXT_ACTIONS: Record<OrderStatus, AllowedAction[]> = {
   IN_PROGRESS: [
     {
       targetStatus: 'COMPLETED',
-      label: 'Complete Work Order',
+      label: 'Complete work order',
       icon: CheckCircle2,
       variant: 'primary',
     },
     {
       targetStatus: 'PENDING_PARTS',
-      label: 'Hold for Parts',
+      label: 'Place on parts hold',
       icon: Wrench,
       variant: 'warning',
       requiresReason: true,
     },
     {
       targetStatus: 'CANCELLED',
-      label: 'Cancel Order',
+      label: 'Cancel order',
       icon: XCircle,
       variant: 'danger',
       requiresReason: true,
@@ -120,13 +121,13 @@ const NEXT_ACTIONS: Record<OrderStatus, AllowedAction[]> = {
   PENDING_PARTS: [
     {
       targetStatus: 'IN_PROGRESS',
-      label: 'Resume Work (Parts In)',
+      label: 'Resume on-site work',
       icon: Play,
       variant: 'primary',
     },
     {
       targetStatus: 'CANCELLED',
-      label: 'Cancel Order',
+      label: 'Cancel order',
       icon: XCircle,
       variant: 'danger',
       requiresReason: true,
@@ -167,7 +168,7 @@ export const StatusStepper: React.FC<StatusStepperProps> = ({
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to update status.');
+        setError('Transition rejected. Please verify business rule conditions.');
       }
     } finally {
       setIsSubmitting(false);
@@ -183,106 +184,107 @@ export const StatusStepper: React.FC<StatusStepperProps> = ({
     }
   };
 
-  const getStepIndex = (s: OrderStatus) => {
-    return ORDERED_STEPS.indexOf(s);
-  };
-
-  const currentStepIdx = getStepIndex(currentStatus);
+  const currentStageIndex = LIFECYCLE_STAGES.findIndex((s) => s.status === currentStatus);
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-5 space-y-5">
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">
-            Lifecycle State Machine
-          </span>
-          <span className="font-mono text-xs font-semibold text-amber-400">
-            Current: {currentStatus}
-          </span>
+    <div className="rounded-xl border border-[#1e2432] bg-[#11141c] p-5 space-y-5">
+      <div className="flex items-center justify-between pb-3 border-b border-[#1b202c]">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-100">Lifecycle Progress</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Deterministic state progression & dispatch checkpoints
+          </p>
         </div>
-
-        <div className="relative flex items-center justify-between">
-          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-zinc-800 -translate-y-1/2 z-0" />
-
-          {ORDERED_STEPS.map((step, idx) => {
-            const isPassed = currentStepIdx >= 0 && idx < currentStepIdx;
-            const isCurrent = step === currentStatus;
-            const isSpecialActive = currentStatus === 'PENDING_PARTS' && step === 'IN_PROGRESS';
-
-            let dotColor = 'bg-zinc-800 border-zinc-700 text-zinc-500';
-            if (isCurrent) {
-              dotColor =
-                'bg-amber-500 border-amber-400 text-zinc-950 font-bold ring-4 ring-amber-500/20';
-            } else if (isPassed) {
-              dotColor = 'bg-emerald-600 border-emerald-500 text-zinc-100';
-            } else if (isSpecialActive) {
-              dotColor =
-                'bg-orange-500 border-orange-400 text-zinc-950 font-bold ring-4 ring-orange-500/20';
-            }
-
-            return (
-              <div key={step} className="relative z-10 flex flex-col items-center">
-                <div
-                  className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] transition-all font-mono ${dotColor}`}
-                >
-                  {isPassed ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
-                </div>
-                <span
-                  className={`text-[10px] font-mono mt-1.5 whitespace-nowrap ${
-                    isCurrent ? 'text-amber-400 font-semibold' : 'text-zinc-500'
-                  }`}
-                >
-                  {step}
-                </span>
-              </div>
-            );
-          })}
+        <div className="text-xs font-medium text-slate-300">
+          Status: <span className="font-semibold text-blue-400">{currentStatus}</span>
         </div>
-
-        {currentStatus === 'PENDING_PARTS' && (
-          <div className="mt-3 p-2.5 rounded bg-orange-950/40 border border-orange-800/60 text-xs text-orange-200 flex items-center justify-between">
-            <span className="flex items-center gap-2 font-mono text-[11px]">
-              <Wrench className="w-3.5 h-3.5 text-orange-400" />
-              STATUS: PENDING_PARTS (On Hold)
-            </span>
-            <span className="text-[10px] text-zinc-400 font-mono">
-              Work halted until component delivery
-            </span>
-          </div>
-        )}
-
-        {currentStatus === 'CANCELLED' && (
-          <div className="mt-3 p-2.5 rounded bg-rose-950/40 border border-rose-800/60 text-xs text-rose-200 flex items-center justify-between">
-            <span className="flex items-center gap-2 font-mono text-[11px]">
-              <XCircle className="w-3.5 h-3.5 text-rose-400" />
-              TERMINAL STATE: CANCELLED
-            </span>
-            <span className="text-[10px] text-zinc-400 font-mono">
-              Job terminated & audit logged
-            </span>
-          </div>
-        )}
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+        {LIFECYCLE_STAGES.map((stage, idx) => {
+          const isPassed = currentStageIndex >= 0 && idx < currentStageIndex;
+          const isCurrent = stage.status === currentStatus;
+          const isHoldActive = currentStatus === 'PENDING_PARTS' && stage.status === 'IN_PROGRESS';
+
+          let cardBg = 'bg-[#0b0d13] border-[#1d222e] text-slate-400';
+          let indicatorBg = 'bg-slate-800 text-slate-400';
+
+          if (isCurrent) {
+            cardBg = 'bg-blue-950/30 border-blue-800/50 text-blue-300';
+            indicatorBg = 'bg-blue-600 text-white font-bold';
+          } else if (isPassed) {
+            cardBg = 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300';
+            indicatorBg = 'bg-emerald-600 text-white font-bold';
+          } else if (isHoldActive) {
+            cardBg = 'bg-orange-950/30 border-orange-800/50 text-orange-300';
+            indicatorBg = 'bg-orange-600 text-white font-bold';
+          }
+
+          return (
+            <div
+              key={stage.status}
+              className={`p-3 rounded-lg border flex items-center justify-between transition-colors ${cardBg}`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`w-5 h-5 rounded-full inline-flex items-center justify-center text-[10px] ${indicatorBg}`}
+                >
+                  {isPassed ? <Check className="w-3 h-3" /> : idx + 1}
+                </span>
+                <span className="text-xs font-medium">
+                  {isHoldActive ? 'Parts Hold' : stage.label}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {currentStatus === 'PENDING_PARTS' && (
+        <div className="p-3.5 rounded-lg bg-orange-950/30 border border-orange-800/40 text-xs text-orange-200 flex items-start gap-3">
+          <Wrench className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold text-orange-300 block">
+              Job Paused: Waiting for Parts Delivery
+            </span>
+            <p className="text-slate-400 text-xs mt-0.5">
+              Work on site is suspended pending component requisition fulfillment.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {currentStatus === 'CANCELLED' && (
+        <div className="p-3.5 rounded-lg bg-red-950/30 border border-red-800/40 text-xs text-red-200 flex items-start gap-3">
+          <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold text-red-300 block">Work Order Cancelled</span>
+            <p className="text-slate-400 text-xs mt-0.5">
+              This order has been aborted. Invoicing and scheduling are locked.
+            </p>
+          </div>
+        </div>
+      )}
+
       {error && (
-        <div className="p-3 rounded bg-red-950/40 border border-red-800/60 text-red-300 text-xs flex items-center gap-2">
+        <div className="p-3.5 rounded-lg bg-red-950/40 border border-red-800/40 text-red-200 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <div className="pt-3 border-t border-zinc-800">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block mb-2">
-          Allowed Next Transitions
+      <div className="pt-1">
+        <span className="text-xs font-medium text-slate-400 block mb-2.5">
+          Available Lifecycle Actions
         </span>
 
         {isTerminal ? (
-          <div className="p-3 rounded border border-zinc-800 bg-zinc-950/50 text-xs font-mono text-zinc-400">
-            Work order has reached terminal state ({currentStatus}). State is locked against further
-            transitions.
+          <div className="p-3 rounded-lg border border-[#1e2432] bg-[#0c0e14] text-xs text-slate-400">
+            This job has reached a terminal state ({currentStatus.toLowerCase()}). Further
+            transitions are disabled.
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2.5">
             {(NEXT_ACTIONS[currentStatus] || [])
               .filter((action) => {
                 if (userRole === 'TECHNICIAN' && action.targetStatus === 'CANCELLED') {
@@ -292,16 +294,16 @@ export const StatusStepper: React.FC<StatusStepperProps> = ({
               })
               .map((action) => {
                 const Icon = action.icon;
-                let btnClass = 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700';
+                let btnClass = 'bg-[#151923] hover:bg-[#1c2130] text-slate-200 border-[#222836]';
 
                 if (action.variant === 'primary') {
                   btnClass =
-                    'bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-600 font-semibold';
+                    'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 shadow-sm shadow-blue-500/20 font-medium';
                 } else if (action.variant === 'warning') {
                   btnClass =
-                    'bg-orange-950/70 hover:bg-orange-900/80 text-orange-200 border-orange-800/80';
+                    'bg-orange-950/40 hover:bg-orange-900/50 text-orange-300 border-orange-800/40';
                 } else if (action.variant === 'danger') {
-                  btnClass = 'bg-red-950/50 hover:bg-red-900/60 text-red-300 border-red-800/60';
+                  btnClass = 'bg-red-950/40 hover:bg-red-900/50 text-red-300 border-red-800/40';
                 }
 
                 return (
@@ -310,7 +312,7 @@ export const StatusStepper: React.FC<StatusStepperProps> = ({
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => handleActionClick(action)}
-                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded text-xs border transition-colors disabled:opacity-50 ${btnClass}`}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs border transition-all cursor-pointer disabled:opacity-40 ${btnClass}`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                     <span>{action.label}</span>
@@ -322,17 +324,14 @@ export const StatusStepper: React.FC<StatusStepperProps> = ({
       </div>
 
       {pendingAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-lg max-w-md w-full space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#11141c] border border-[#202634] p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
             <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400" />
-                Transition Reason Required
+              <h3 className="text-sm font-semibold text-slate-100">
+                Confirm Status Change &rarr; {pendingAction.targetStatus}
               </h3>
-              <p className="text-xs text-zinc-400">
-                Transitioning to{' '}
-                <span className="font-mono text-amber-400">{pendingAction.targetStatus}</span>{' '}
-                requires an audit explanation note.
+              <p className="text-xs text-slate-400">
+                Please enter a reason or notes for the audit trail.
               </p>
             </div>
 
@@ -341,19 +340,19 @@ export const StatusStepper: React.FC<StatusStepperProps> = ({
               rows={3}
               placeholder={
                 pendingAction.targetStatus === 'PENDING_PARTS'
-                  ? 'Specify part numbers ordered, vendor names, or expected delivery dates...'
-                  : 'Specify reason for order cancellation...'
+                  ? 'Specify required parts, PO number, or supplier delivery timeline...'
+                  : 'Specify reason for cancellation...'
               }
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
-              className="w-full text-xs rounded border border-zinc-700 bg-zinc-950 text-zinc-100 p-2.5 focus:ring-1 focus:ring-amber-500 focus:outline-none resize-none"
+              className="w-full text-xs rounded-lg border border-[#202634] bg-[#0c0e14] text-slate-100 p-3 placeholder-slate-500 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none resize-none"
             />
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#1f2533]">
               <button
                 type="button"
                 onClick={() => setPendingAction(null)}
-                className="px-3 py-1.5 text-xs rounded border border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                className="px-3.5 py-2 text-xs font-medium rounded-lg border border-[#202634] bg-[#151923] text-slate-300 hover:bg-[#1c2130] cursor-pointer"
               >
                 Cancel
               </button>
@@ -361,9 +360,9 @@ export const StatusStepper: React.FC<StatusStepperProps> = ({
                 type="button"
                 disabled={!reasonInput.trim() || isSubmitting}
                 onClick={() => executeTransition(pendingAction, reasonInput.trim())}
-                className="px-3 py-1.5 text-xs font-semibold rounded bg-amber-500 text-zinc-950 hover:bg-amber-400 disabled:opacity-40"
+                className="px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 cursor-pointer shadow-sm shadow-blue-500/20"
               >
-                {isSubmitting ? 'Confirming...' : 'Confirm Transition'}
+                {isSubmitting ? 'Updating...' : 'Confirm'}
               </button>
             </div>
           </div>

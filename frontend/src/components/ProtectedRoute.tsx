@@ -25,10 +25,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-400">
+      <div className="min-h-screen flex items-center justify-center bg-[#090b0e] text-slate-400 font-mono">
         <div className="flex items-center gap-3">
-          <div className="w-4 h-4 border-2 border-zinc-500 border-t-amber-500 rounded-full animate-spin" />
-          <span className="text-xs uppercase tracking-wider font-mono">Authenticating...</span>
+          <div className="w-3.5 h-3.5 border-2 border-[#232a36] border-t-amber-500 rounded-full animate-spin" />
+          <span className="text-xs uppercase tracking-widest text-slate-400">
+            AUTHENTICATING OPERATOR...
+          </span>
         </div>
       </div>
     );
@@ -40,21 +42,23 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-zinc-300 p-6">
-        <div className="max-w-md w-full border border-zinc-800 bg-zinc-900/60 p-6 rounded-lg text-center">
-          <div className="inline-flex p-3 rounded-full bg-red-950/50 border border-red-800/60 text-red-400 mb-4 font-mono text-sm">
-            403_ACCESS_FORBIDDEN
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#090b0e] text-slate-300 p-6 font-mono">
+        <div className="max-w-md w-full border border-[#232a36] bg-[#0e1217] p-6 rounded-[3px] text-center space-y-4">
+          <div className="inline-flex px-2 py-1 rounded-[1px] bg-[#240e12] border border-[#521b24] text-red-400 text-xs font-bold">
+            403 {'//'} INSUFFICIENT AUTHORIZATION
           </div>
-          <h2 className="text-lg font-semibold text-zinc-100 mb-2">Insufficient Permissions</h2>
-          <p className="text-xs text-zinc-400 mb-6">
-            Your role (<span className="font-mono text-amber-400 font-semibold">{user.role}</span>)
-            does not have access to this operational view.
-          </p>
+          <div className="space-y-1">
+            <h2 className="text-sm font-bold text-slate-100 uppercase">Access Denied</h2>
+            <p className="text-xs text-slate-400 font-sans">
+              Role [<span className="text-amber-400 font-mono font-bold">{user.role}</span>] is not
+              cleared for this dispatch view.
+            </p>
+          </div>
           <Link
             href="/work-orders"
-            className="inline-block px-4 py-2 text-xs font-medium rounded border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-white transition-colors"
+            className="inline-block px-3 py-1.5 text-xs font-bold uppercase rounded-[2px] border border-[#232a36] bg-[#141922] text-slate-200 hover:bg-[#1a212d] transition-colors"
           >
-            Return to Work Orders
+            Return to Master Queue
           </Link>
         </div>
       </div>

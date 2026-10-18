@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, DollarSign, Lock, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Lock, Plus, Receipt, Trash2 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { api } from '../api/client';
@@ -32,7 +32,6 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
 
   const isCompleted = order.status === 'COMPLETED';
   const isEditable = canEdit && !isCompleted;
-
   const hasLabor = items.some((i) => i.type === 'LABOR');
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -44,7 +43,7 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
       unitPrice === '' ||
       Number(unitPrice) < 0
     ) {
-      setError('Please provide valid description, positive quantity, and non-negative unit price.');
+      setError('Please provide a valid description, quantity, and unit cost.');
       return;
     }
 
@@ -80,7 +79,7 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to add line item.');
+        setError('Failed to record line item.');
       }
     } finally {
       setIsSubmitting(false);
@@ -88,7 +87,7 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!confirm('Are you sure you want to remove this line item?')) return;
+    if (!confirm('Remove this line item from the invoice?')) return;
 
     setError(null);
     setIsSubmitting(true);
@@ -112,7 +111,7 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to remove item.');
+        setError('Failed to delete item.');
       }
     } finally {
       setIsSubmitting(false);
@@ -125,95 +124,108 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
   };
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-5 space-y-5">
-      <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-        <div className="flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-emerald-400" />
-          <h2 className="text-sm font-semibold text-zinc-100">Billable Items & Pricing Engine</h2>
+    <div className="rounded-xl border border-[#1e2432] bg-[#11141c] p-6 space-y-6">
+      <div className="flex items-center justify-between pb-4 border-b border-[#1f2533]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-blue-950/40 border border-blue-800/40 flex items-center justify-center text-blue-400">
+            <Receipt className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-100">Labor & Materials Ledger</h3>
+            <p className="text-xs text-slate-400">
+              Itemized service parts, on-site labor hours, and pricing calculations
+            </p>
+          </div>
         </div>
-        <span className="text-[11px] font-mono text-zinc-400">
-          Tax Rate: 8.25% (Standard Field Services)
-        </span>
+
+        {isCompleted && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium">
+            <Lock className="w-3 h-3 text-slate-400" />
+            Invoice Finalized
+          </span>
+        )}
       </div>
 
-      {!hasLabor && !isCompleted && (
-        <div className="p-3 rounded bg-amber-950/30 border border-amber-800/50 text-amber-300 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-          <span>
-            Notice: At least 1 <strong className="font-mono">LABOR</strong> item must be logged
-            before this work order can transition to COMPLETED.
-          </span>
-        </div>
-      )}
-
-      {isCompleted && (
-        <div className="p-3 rounded bg-zinc-950 border border-zinc-800 text-zinc-400 text-xs flex items-center gap-2 font-mono">
-          <Lock className="w-4 h-4 shrink-0 text-zinc-500" />
-          <span>Order completed. Financial line items are locked from modifications.</span>
-        </div>
-      )}
-
       {error && (
-        <div className="p-3 rounded bg-red-950/40 border border-red-800/60 text-red-300 text-xs flex items-center gap-2">
+        <div className="p-3.5 rounded-lg bg-red-950/40 border border-red-800/40 text-red-200 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <div className="rounded border border-zinc-800 bg-zinc-950/60 overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr className="border-b border-zinc-800 bg-zinc-950 text-[10px] font-mono uppercase tracking-wider text-zinc-400">
-              <th className="py-2.5 px-3">Type</th>
-              <th className="py-2.5 px-3">Description</th>
-              <th className="py-2.5 px-3 text-right">Qty</th>
-              <th className="py-2.5 px-3 text-right">Unit Price</th>
-              <th className="py-2.5 px-3 text-right">Total</th>
-              {isEditable && <th className="py-2.5 px-3 text-right">Action</th>}
+      {!hasLabor && !isCompleted && (
+        <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-800/40 text-xs text-amber-200 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            Notice: At least 1 labor entry is required by the pricing engine before completing this
+            work order.
+          </span>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-lg border border-[#1d222e]">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-[#0c0e14] border-b border-[#1d222e] text-slate-400 font-medium uppercase tracking-wider">
+            <tr>
+              <th scope="col" className="py-2.5 px-3">
+                Type
+              </th>
+              <th scope="col" className="py-2.5 px-3">
+                Description
+              </th>
+              <th scope="col" className="py-2.5 px-3 text-right">
+                Qty / Hrs
+              </th>
+              <th scope="col" className="py-2.5 px-3 text-right">
+                Rate
+              </th>
+              <th scope="col" className="py-2.5 px-3 text-right">
+                Total
+              </th>
+              {isEditable && (
+                <th scope="col" className="py-2.5 px-3 text-right w-12">
+                  Action
+                </th>
+              )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/50">
+          <tbody className="divide-y divide-[#1b202c]">
             {items.length === 0 ? (
               <tr>
-                <td
-                  colSpan={isEditable ? 6 : 5}
-                  className="py-8 text-center text-zinc-500 font-mono text-xs"
-                >
-                  No items logged yet. Add parts or labor hours below.
+                <td colSpan={isEditable ? 6 : 5} className="py-8 text-center text-slate-500">
+                  No line items logged yet. Add labor or replacement parts below.
                 </td>
               </tr>
             ) : (
               items.map((item) => (
-                <tr key={item.id} className="hover:bg-zinc-900/60 transition-colors">
-                  <td className="py-2.5 px-3 whitespace-nowrap">
+                <tr key={item.id} className="hover:bg-[#151923] transition-colors">
+                  <td className="py-3 px-3 whitespace-nowrap">
                     <span
-                      className={`text-[9px] font-mono px-1.5 py-0.5 rounded border uppercase font-medium ${
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
                         item.type === 'LABOR'
-                          ? 'bg-blue-950/60 text-blue-300 border-blue-800/60'
-                          : 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
+                          ? 'bg-blue-950/60 text-blue-300 border border-blue-800/40'
+                          : 'bg-purple-950/60 text-purple-300 border border-purple-800/40'
                       }`}
                     >
-                      {item.type}
+                      {item.type === 'LABOR' ? 'Labor' : 'Part'}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-zinc-200 font-medium">{item.description}</td>
-                  <td className="py-2.5 px-3 text-right font-mono text-zinc-300">
-                    {Number(item.quantity).toFixed(2)}
-                  </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-zinc-300">
+                  <td className="py-3 px-3 text-slate-200 font-medium">{item.description}</td>
+                  <td className="py-3 px-3 text-right font-mono text-slate-300">{item.quantity}</td>
+                  <td className="py-3 px-3 text-right font-mono text-slate-300">
                     {formatCurrency(item.unitPrice)}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-medium text-zinc-100">
+                  <td className="py-3 px-3 text-right font-mono font-medium text-slate-100">
                     {formatCurrency(item.totalPrice)}
                   </td>
                   {isEditable && (
-                    <td className="py-2.5 px-3 text-right">
+                    <td className="py-3 px-3 text-right">
                       <button
                         type="button"
-                        disabled={isSubmitting}
                         onClick={() => handleDeleteItem(item.id)}
-                        className="p-1 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded transition-colors"
-                        title="Delete Item"
+                        disabled={isSubmitting}
+                        className="p-1 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                        title="Delete item"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -226,69 +238,51 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
         </table>
       </div>
 
-      <div className="flex justify-end">
-        <div className="w-full sm:w-72 p-3.5 rounded border border-zinc-800 bg-zinc-950/80 space-y-2 text-xs">
-          <div className="flex justify-between text-zinc-400">
-            <span>Subtotal</span>
-            <span className="font-mono text-zinc-200">{formatCurrency(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-zinc-400">
-            <span>Sales Tax (8.25%)</span>
-            <span className="font-mono text-zinc-200">{formatCurrency(taxAmount)}</span>
-          </div>
-          <div className="flex justify-between font-semibold text-zinc-100 pt-2 border-t border-zinc-800">
-            <span className="flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-              Total Due
-            </span>
-            <span className="font-mono text-emerald-400 text-sm">
-              {formatCurrency(totalAmount)}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {isEditable && (
-        <form onSubmit={handleAddItem} className="pt-4 border-t border-zinc-800 space-y-3">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
-            Add Billable Part or Labor Hours
-          </span>
+        <form
+          onSubmit={handleAddItem}
+          className="p-4 rounded-xl border border-[#1f2533] bg-[#0c0e14] space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-300">Add Line Item</span>
+            <span className="text-[11px] text-slate-500">Record parts or technician hours</span>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div className="sm:col-span-3">
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as ItemType)}
-                className="w-full text-xs rounded border border-zinc-700 bg-zinc-950 text-zinc-100 px-2.5 py-1.5 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="w-full text-xs rounded-lg border border-[#232b3b] bg-[#12151c] text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               >
-                <option value="PART">PART</option>
-                <option value="LABOR">LABOR</option>
+                <option value="PART">Part / Material</option>
+                <option value="LABOR">Labor Hours</option>
               </select>
             </div>
 
-            <div className="sm:col-span-5">
+            <div className="sm:col-span-4">
               <input
                 type="text"
                 required
-                placeholder="Description (e.g. 1.5 HP Condenser Fan Motor)"
+                placeholder={
+                  type === 'LABOR' ? 'e.g. Diagnostic & system repair' : 'e.g. 40A Contactor relay'
+                }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full text-xs rounded border border-zinc-700 bg-zinc-950 text-zinc-100 px-3 py-1.5 placeholder-zinc-500 focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                className="w-full text-xs rounded-lg border border-[#232b3b] bg-[#12151c] text-slate-200 px-3 py-2 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
 
             <div className="sm:col-span-2">
               <input
                 type="number"
-                step="0.01"
-                min="0.01"
+                step="any"
+                min="0.1"
                 required
-                placeholder="Qty"
+                placeholder="Qty / Hrs"
                 value={quantity}
-                onChange={(e) =>
-                  setQuantity(e.target.value === '' ? '' : parseFloat(e.target.value))
-                }
-                className="w-full text-xs rounded border border-zinc-700 bg-zinc-950 text-zinc-100 px-2.5 py-1.5 placeholder-zinc-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-right font-mono"
+                onChange={(e) => setQuantity(e.target.value ? Number(e.target.value) : '')}
+                className="w-full text-xs rounded-lg border border-[#232b3b] bg-[#12151c] text-slate-200 px-3 py-2 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
 
@@ -298,21 +292,19 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
                 step="0.01"
                 min="0"
                 required
-                placeholder="Price ($)"
+                placeholder="Unit rate ($)"
                 value={unitPrice}
-                onChange={(e) =>
-                  setUnitPrice(e.target.value === '' ? '' : parseFloat(e.target.value))
-                }
-                className="w-full text-xs rounded border border-zinc-700 bg-zinc-950 text-zinc-100 px-2.5 py-1.5 placeholder-zinc-500 focus:ring-1 focus:ring-amber-500 focus:outline-none text-right font-mono"
+                onChange={(e) => setUnitPrice(e.target.value ? Number(e.target.value) : '')}
+                className="w-full text-xs rounded-lg border border-[#232b3b] bg-[#12151c] text-slate-200 px-3 py-2 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
 
-            <div className="sm:col-span-1 flex items-end">
+            <div className="sm:col-span-1">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-amber-400 transition-colors"
-                title="Add Item"
+                className="w-full h-full min-h-8.5 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 transition-colors shadow-sm shadow-blue-500/20 cursor-pointer"
+                title="Add to ledger"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -320,6 +312,23 @@ export const LineItemsEditor: React.FC<LineItemsEditorProps> = ({
           </div>
         </form>
       )}
+
+      <div className="flex justify-end pt-2">
+        <div className="w-full sm:w-72 p-4 rounded-xl border border-[#1d222e] bg-[#0c0e14] space-y-2.5">
+          <div className="flex justify-between text-xs text-slate-400">
+            <span>Subtotal</span>
+            <span className="font-mono text-slate-200">{formatCurrency(subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-xs text-slate-400">
+            <span>Sales Tax (8.25%)</span>
+            <span className="font-mono text-slate-200">{formatCurrency(taxAmount)}</span>
+          </div>
+          <div className="pt-2.5 border-t border-[#1d222e] flex justify-between text-sm font-semibold text-slate-100">
+            <span>Total Balance</span>
+            <span className="font-mono text-emerald-400">{formatCurrency(totalAmount)}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

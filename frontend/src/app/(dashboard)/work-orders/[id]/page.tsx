@@ -3,13 +3,12 @@
 import {
   AlertCircle,
   ArrowLeft,
-  Building2,
+  Calendar,
+  Clock,
   History,
+  Mail,
   MapPin,
   Phone,
-  Shield,
-  User,
-  Wrench,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -41,7 +40,7 @@ export default function WorkOrderDetailPage() {
       const data = await api.workOrders.get(orderId);
       setOrder(data);
     } catch {
-      setError('Failed to load work order details.');
+      setError('Unable to load work order details.');
     } finally {
       setIsLoading(false);
     }
@@ -56,21 +55,21 @@ export default function WorkOrderDetailPage() {
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return 'Unscheduled';
+    if (!dateStr) return 'Not scheduled';
     return new Date(dateStr).toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
     });
   };
 
   if (isLoading) {
     return (
-      <div className="p-16 text-center text-zinc-500 flex flex-col items-center justify-center gap-2 font-mono text-xs">
-        <div className="w-5 h-5 border-2 border-zinc-600 border-t-amber-500 rounded-full animate-spin" />
-        <span>Loading work order #{idStr}...</span>
+      <div className="py-24 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
+        <div className="w-5 h-5 border-2 border-slate-600 border-t-blue-500 rounded-full animate-spin" />
+        <span className="text-sm">Loading work order details...</span>
       </div>
     );
   }
@@ -80,13 +79,13 @@ export default function WorkOrderDetailPage() {
       <div className="space-y-4">
         <Link
           href="/work-orders"
-          className="inline-flex items-center gap-2 text-xs font-mono text-zinc-400 hover:text-zinc-200"
+          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Work Orders
+          <ArrowLeft className="w-4 h-4" /> Back to Work Orders
         </Link>
-        <div className="p-4 rounded bg-red-950/40 border border-red-800/60 text-red-300 text-xs flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-red-950/40 border border-red-800/40 text-red-200 text-sm flex items-center gap-2.5">
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-          <span>{error || 'Work order not found.'}</span>
+          <span>{error || 'Work order does not exist or has been removed.'}</span>
         </div>
       </div>
     );
@@ -99,59 +98,57 @@ export default function WorkOrderDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between pb-2">
+      <div className="flex items-center justify-between">
         <Link
           href="/work-orders"
-          className="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-400 hover:text-amber-400 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Dispatch Queue
+          <ArrowLeft className="w-4 h-4" /> Back to Work Orders
         </Link>
-        <span className="text-[11px] font-mono text-zinc-500">
-          Created: {new Date(order.createdAt).toLocaleDateString()}
-        </span>
+
+        <span className="text-xs text-slate-500">Created {formatDate(order.createdAt)}</span>
       </div>
 
-      <div className="p-6 rounded-lg border border-zinc-800 bg-zinc-900/80 shadow-md">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <span className="font-mono text-sm font-bold text-amber-400">
-                {order.orderNumber}
-              </span>
-              <StatusBadge status={order.status} size="md" />
-              <PriorityBadge priority={order.priority} size="md" />
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-                {order.category}
-              </span>
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">{order.title}</h1>
-            {order.customer && (
-              <p className="text-xs text-zinc-400 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-zinc-500" />
-                <span>
-                  {order.customer.companyName || order.customer.name} &bull; {order.customer.city}
-                </span>
-              </p>
-            )}
+      <div className="p-6 rounded-2xl border border-[#1e2432] bg-[#11141c] space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="font-mono text-sm font-semibold text-blue-400">
+              {order.orderNumber}
+            </span>
+            <span className="text-xs text-slate-500">&bull;</span>
+            <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">
+              {order.category}
+            </span>
+            <PriorityBadge priority={order.priority} />
+            <StatusBadge status={order.status} />
+          </div>
+
+          <div className="text-right">
+            <span className="text-xs text-slate-400 block">Total Balance</span>
+            <span className="font-mono text-lg font-bold text-emerald-400">
+              $
+              {(typeof order.totalAmount === 'string'
+                ? parseFloat(order.totalAmount)
+                : order.totalAmount || 0
+              ).toFixed(2)}
+            </span>
           </div>
         </div>
+
+        <h1 className="text-xl font-bold text-slate-100 tracking-tight">{order.title}</h1>
       </div>
 
-      <StatusStepper
-        order={order}
-        onStatusUpdated={handleOrderUpdated}
-        userRole={user?.role || 'TECHNICIAN'}
-      />
+      {user && (
+        <StatusStepper order={order} onStatusUpdated={handleOrderUpdated} userRole={user.role} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="p-5 rounded-lg border border-zinc-800 bg-zinc-900/70 space-y-3">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
-              Service Request Details & Scope
-            </span>
-            <p className="text-xs text-zinc-300 bg-zinc-950/60 p-4 rounded border border-zinc-800/80 leading-relaxed whitespace-pre-wrap">
+          <div className="p-6 rounded-xl border border-[#1e2432] bg-[#11141c] space-y-3">
+            <h3 className="text-sm font-semibold text-slate-100">Problem Description & Symptoms</h3>
+            <div className="p-4 rounded-xl border border-[#1d222e] bg-[#0c0e14] text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
               {order.description}
-            </p>
+            </div>
           </div>
 
           <LineItemsEditor
@@ -163,118 +160,136 @@ export default function WorkOrderDetailPage() {
 
         <div className="space-y-6">
           {order.customer && (
-            <div className="p-5 rounded-lg border border-zinc-800 bg-zinc-900/70 space-y-3">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
-                Site & Contact
-              </span>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-zinc-200 font-medium">
-                  <User className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                  <span>{order.customer.name}</span>
+            <div className="p-5 rounded-xl border border-[#1e2432] bg-[#11141c] space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Customer & Site Location
+              </h3>
+              <div className="space-y-3 text-xs">
+                <div>
+                  <div className="font-medium text-slate-200 text-sm">{order.customer.name}</div>
+                  {order.customer.companyName && (
+                    <div className="text-slate-400 mt-0.5">{order.customer.companyName}</div>
+                  )}
                 </div>
-                {order.customer.companyName && (
-                  <div className="flex items-center gap-2 text-zinc-400">
-                    <Building2 className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                    <span>{order.customer.companyName}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <MapPin className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+
+                <div className="flex items-start gap-2 text-slate-300">
+                  <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                   <span>
                     {order.customer.address}, {order.customer.city}
+                    {order.customer.postalCode ? ` ${order.customer.postalCode}` : ''}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <Phone className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                  <span className="font-mono">{order.customer.phone}</span>
-                </div>
+
+                {order.customer.phone && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Phone className="w-4 h-4 text-slate-500 shrink-0" />
+                    <span>{order.customer.phone}</span>
+                  </div>
+                )}
+
+                {order.customer.email && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Mail className="w-4 h-4 text-slate-500 shrink-0" />
+                    <span>{order.customer.email}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          <div className="p-5 rounded-lg border border-zinc-800 bg-zinc-900/70 space-y-3">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
-              Technician & Window
-            </span>
+          <div className="p-5 rounded-xl border border-[#1e2432] bg-[#11141c] space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Assigned Field Crew
+            </h3>
+            {order.technician ? (
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-semibold text-slate-200 text-xs">
+                    {order.technician.fullName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-medium text-slate-200">{order.technician.fullName}</div>
+                    <div className="text-slate-400 text-[11px]">{order.technician.email}</div>
+                  </div>
+                </div>
+                {order.technician.phone && (
+                  <div className="flex items-center gap-2 text-slate-400 pt-1">
+                    <Phone className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{order.technician.phone}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 italic">
+                No technician currently assigned to this order.
+              </div>
+            )}
+          </div>
+
+          <div className="p-5 rounded-xl border border-[#1e2432] bg-[#11141c] space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Schedule Window
+            </h3>
             <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-                <span className="text-zinc-400 flex items-center gap-1.5">
-                  <Wrench className="w-3.5 h-3.5 text-zinc-500" /> Crew
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-slate-500" /> Start Time
                 </span>
-                <span className="font-medium text-zinc-200">
-                  {order.technician ? order.technician.fullName : 'Unassigned'}
+                <span className="text-slate-200 font-mono text-[11px]">
+                  {formatDate(order.scheduledStart)}
                 </span>
               </div>
-              <div className="space-y-1">
-                <span className="text-zinc-500 text-[10px] uppercase font-mono block">
-                  Scheduled Start
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" /> End Time
                 </span>
-                <span className="font-mono text-zinc-300">{formatDate(order.scheduledStart)}</span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-zinc-500 text-[10px] uppercase font-mono block">
-                  Scheduled End
+                <span className="text-slate-200 font-mono text-[11px]">
+                  {formatDate(order.scheduledEnd)}
                 </span>
-                <span className="font-mono text-zinc-300">{formatDate(order.scheduledEnd)}</span>
               </div>
             </div>
           </div>
 
-          <div className="p-5 rounded-lg border border-zinc-800 bg-zinc-900/70 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-zinc-500" />
-                Audit Trail History
-              </span>
-              <span className="font-mono text-[10px] text-zinc-500">
-                {order.statusHistory?.length || 0} Events
-              </span>
-            </div>
+          <div className="p-5 rounded-xl border border-[#1e2432] bg-[#11141c] space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <History className="w-4 h-4 text-slate-400" />
+              Status Audit History
+            </h3>
 
-            <div className="space-y-3 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
-              {!order.statusHistory || order.statusHistory.length === 0 ? (
-                <span className="text-zinc-500 font-mono text-[11px]">
-                  No status transitions logged yet.
-                </span>
-              ) : (
-                order.statusHistory.map((hist) => (
+            {order.statusHistory && order.statusHistory.length > 0 ? (
+              <div className="space-y-3 text-xs">
+                {order.statusHistory.map((h) => (
                   <div
-                    key={hist.id}
-                    className="p-2.5 rounded border border-zinc-800 bg-zinc-950/60 text-xs space-y-1"
+                    key={h.id}
+                    className="p-3 rounded-lg border border-[#1d222e] bg-[#0c0e14] space-y-1"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[10px] text-zinc-500">
-                          {hist.oldStatus || 'NONE'} &rarr;
-                        </span>
-                        <span className="font-mono text-[11px] font-semibold text-amber-400">
-                          {hist.newStatus}
-                        </span>
-                      </div>
-                      <span className="font-mono text-[10px] text-zinc-500">
-                        {new Date(hist.createdAt).toLocaleTimeString([], {
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-slate-300">
+                        {h.oldStatus || 'INTAKE'} &rarr; {h.newStatus}
+                      </span>
+                      <span className="text-slate-500 font-mono">
+                        {new Date(h.createdAt).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
                       </span>
                     </div>
-
-                    {hist.changedBy && (
-                      <span className="text-[10px] text-zinc-400 flex items-center gap-1">
-                        <Shield className="w-2.5 h-2.5 text-zinc-500" />
-                        {hist.changedBy.fullName} ({hist.changedBy.role})
-                      </span>
+                    {h.reason && (
+                      <p className="text-slate-400 text-[11px] italic">&ldquo;{h.reason}&rdquo;</p>
                     )}
-
-                    {hist.reason && (
-                      <p className="text-[11px] text-zinc-300 italic pt-1 border-t border-zinc-800/60 mt-1">
-                        "{hist.reason}"
-                      </p>
+                    {h.changedBy && (
+                      <div className="text-[10px] text-slate-500">
+                        Updated by {h.changedBy.fullName} ({h.changedBy.role})
+                      </div>
                     )}
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-500 italic">
+                Initial creation record. No subsequent status transitions logged.
+              </div>
+            )}
           </div>
         </div>
       </div>
