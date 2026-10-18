@@ -5,8 +5,8 @@ import {
   runTriage,
   type SuggestedTech,
 } from '../src/ai/triageEngine';
-import prisma from '../src/db/prisma';
 import { config } from '../src/config';
+import prisma from '../src/db/prisma';
 
 interface BenchmarkCase {
   input: string;
