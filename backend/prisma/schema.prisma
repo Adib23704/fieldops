@@ -1,0 +1,161 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  ADMIN
+  DISPATCHER
+  TECHNICIAN
+}
+
+enum OrderStatus {
+  DRAFT
+  SCHEDULED
+  DISPATCHED
+  IN_PROGRESS
+  PENDING_PARTS
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+enum ItemType {
+  PART
+  LABOR
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  fullName        String    @map("full_name")
+  role            UserRole  @default(TECHNICIAN)
+  phone           String?
+  skillCategories String[]  @default([]) @map("skill_categories")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  assignedOrders   WorkOrder[]              @relation("AssignedOrders")
+  createdOrders    WorkOrder[]              @relation("CreatedOrders")
+  statusChanges    WorkOrderStatusHistory[]
+  suggestedTriage  AiTriageLog[]
+
+  @@map("users")
+}
+
+model Customer {
+  id          Int      @id @default(autoincrement())
+  name        String
+  companyName String?  @map("company_name")
+  email       String?
+  phone       String
+  address     String
+  city        String
+  postalCode  String?  @map("postal_code")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workOrders WorkOrder[]
+
+  @@map("customers")
+}
+
+model WorkOrder {
+  id             Int           @id @default(autoincrement())
+  orderNumber    String        @unique @map("order_number")
+  customerId     Int           @map("customer_id")
+  technicianId   Int?          @map("technician_id")
+  createdById    Int           @map("created_by_id")
+  title          String
+  description    String
+  category       String
+  status         OrderStatus   @default(DRAFT)
+  priority       OrderPriority @default(MEDIUM)
+  scheduledStart DateTime?     @map("scheduled_start")
+  scheduledEnd   DateTime?     @map("scheduled_end")
+  actualStart    DateTime?     @map("actual_start")
+  actualEnd      DateTime?     @map("actual_end")
+  subtotal       Decimal       @default(0.00) @db.Decimal(10, 2)
+  taxRate        Decimal       @default(8.25) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount      Decimal       @default(0.00) @map("tax_amount") @db.Decimal(10, 2)
+  totalAmount    Decimal       @default(0.00) @map("total_amount") @db.Decimal(10, 2)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  customer      Customer                 @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  technician    User?                    @relation("AssignedOrders", fields: [technicianId], references: [id], onDelete: SetNull)
+  createdBy     User                     @relation("CreatedOrders", fields: [createdById], references: [id], onDelete: Restrict)
+  items         WorkOrderItem[]
+  statusHistory WorkOrderStatusHistory[]
+  triageLogs    AiTriageLog[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([technicianId])
+  @@index([priority])
+  @@map("work_orders")
+}
+
+model WorkOrderItem {
+  id          Int       @id @default(autoincrement())
+  workOrderId Int       @map("work_order_id")
+  type        ItemType
+  description String
+  quantity    Decimal   @db.Decimal(8, 2)
+  unitPrice   Decimal   @map("unit_price") @db.Decimal(10, 2)
+  totalPrice  Decimal   @map("total_price") @db.Decimal(10, 2)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@map("work_order_items")
+}
+
+model WorkOrderStatusHistory {
+  id          Int          @id @default(autoincrement())
+  workOrderId Int          @map("work_order_id")
+  oldStatus   OrderStatus? @map("old_status")
+  newStatus   OrderStatus  @map("new_status")
+  changedById Int          @map("changed_by_id")
+  reason      String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  changedBy User      @relation(fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([workOrderId])
+  @@map("work_order_status_history")
+}
+
+model AiTriageLog {
+  id                       Int            @id @default(autoincrement())
+  workOrderId              Int?           @map("work_order_id")
+  rawPromptText            String         @map("raw_prompt_text")
+  predictedUrgency         OrderPriority  @map("predicted_urgency")
+  predictedCategory        String         @map("predicted_category")
+  confidenceScore          Decimal        @map("confidence_score") @db.Decimal(4, 3)
+  suggestedTechId          Int?           @map("suggested_tech_id")
+  reasoningSummary         String         @map("reasoning_summary")
+  extractedSymptoms        String[]       @default([]) @map("extracted_symptoms")
+  usedFallback             Boolean        @default(false) @map("used_fallback")
+  dispatcherOverrideUrgency OrderPriority? @map("dispatcher_override_urgency")
+  evaluatedAt              DateTime?      @map("evaluated_at")
+  createdAt                DateTime       @default(now()) @map("created_at")
+
+  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  suggestedTech User?      @relation(fields: [suggestedTechId], references: [id], onDelete: SetNull)
+
+  @@map("ai_triage_logs")
+}
