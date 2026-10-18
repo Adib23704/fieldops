@@ -2,7 +2,7 @@
 
 import { AlertCircle, X } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { Customer } from '../types';
 
@@ -10,9 +10,15 @@ interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (customer: Customer) => void;
+  customerToEdit?: Customer | null;
 }
 
-export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, onCreated }) => {
+export const CustomerModal: React.FC<CustomerModalProps> = ({
+  isOpen,
+  onClose,
+  onCreated,
+  customerToEdit,
+}) => {
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -24,12 +30,46 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, o
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      if (customerToEdit) {
+        setName(customerToEdit.name || '');
+        setCompanyName(customerToEdit.companyName || '');
+        setEmail(customerToEdit.email || '');
+        setPhone(customerToEdit.phone || '');
+        setAddress(customerToEdit.address || '');
+        setCity(customerToEdit.city || 'Austin');
+        setPostalCode(customerToEdit.postalCode || '');
+      } else {
+        setName('');
+        setCompanyName('');
+        setEmail('');
+        setPhone('');
+        setAddress('');
+        setCity('Austin');
+        setPostalCode('');
+      }
+      setError(null);
+    }
+  }, [customerToEdit, isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim() || !address.trim() || !city.trim()) {
+    const cleanPhone = phone.trim();
+    if (!name.trim() || !cleanPhone || !address.trim() || !city.trim()) {
       setError('Contact person, phone, address, and city are required.');
+      return;
+    }
+
+    if (!/^\d+$/.test(cleanPhone)) {
+      setError('Primary phone must contain numbers only.');
+      return;
+    }
+
+    if (cleanPhone.length < 7) {
+      setError('Primary phone must be at least 7 digits.');
       return;
     }
 
@@ -37,23 +77,32 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, o
     setIsSubmitting(true);
 
     try {
-      const created = await api.customers.create({
+      const payload = {
         name: name.trim(),
         companyName: companyName.trim() || undefined,
         email: email.trim() || undefined,
-        phone: phone.trim(),
+        phone: cleanPhone,
         address: address.trim(),
         city: city.trim(),
         postalCode: postalCode.trim() || undefined,
-      });
+      };
 
-      onCreated(created);
+      if (customerToEdit) {
+        const updated = await api.customers.update(customerToEdit.id, payload);
+        onCreated(updated);
+      } else {
+        const created = await api.customers.create(payload);
+        onCreated(created);
+      }
+
       onClose();
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to create customer record.');
+        setError(
+          customerToEdit ? 'Failed to update customer record.' : 'Failed to create customer record.'
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -72,9 +121,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, o
       <div className="relative bg-[#11141c] border border-[#202634] rounded-2xl max-w-lg w-full shadow-2xl p-6 z-10 space-y-5">
         <div className="flex items-start justify-between pb-4 border-b border-[#1f2533]">
           <div>
-            <h2 className="text-base font-semibold text-slate-100">New Customer Account</h2>
+            <h2 className="text-base font-semibold text-slate-100">
+              {customerToEdit ? 'Edit Customer Account' : 'New Customer Account'}
+            </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Add a commercial facility or residential service account
+              {customerToEdit
+                ? 'Update customer details and contact information'
+                : 'Add a commercial facility or residential service account'}
             </p>
           </div>
 
@@ -98,11 +151,12 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, o
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label htmlFor="company" className="block text-xs font-medium text-slate-300 mb-1.5">
-                Facility / Company Name
+                Facility / Company Name *
               </label>
               <input
                 id="company"
                 type="text"
+                required
                 placeholder="e.g. Austin Regional Hospital"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
@@ -134,22 +188,48 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, o
               <input
                 id="phone"
                 type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={15}
                 required
-                placeholder="(512) 555-0199"
+                placeholder="e.g. 5125550199"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full text-xs rounded-lg border border-[#202634] bg-[#0c0e14] text-slate-200 px-3 py-2 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                onKeyDown={(e) => {
+                  if (
+                    [
+                      'Backspace',
+                      'Delete',
+                      'Tab',
+                      'Escape',
+                      'Enter',
+                      'ArrowLeft',
+                      'ArrowRight',
+                      'ArrowUp',
+                      'ArrowDown',
+                    ].includes(e.key) ||
+                    e.ctrlKey ||
+                    e.metaKey
+                  ) {
+                    return;
+                  }
+                  if (!/^\d$/.test(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                className="w-full text-xs rounded-lg border border-[#202634] bg-[#0c0e14] text-slate-200 px-3 py-2 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
               />
             </div>
 
             <div>
               <label htmlFor="email" className="block text-xs font-medium text-slate-300 mb-1.5">
-                Email Address
+                Email Address *
               </label>
               <input
                 id="email"
                 type="email"
                 placeholder="facilities@company.com"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full text-xs rounded-lg border border-[#202634] bg-[#0c0e14] text-slate-200 px-3 py-2 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -189,11 +269,12 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, o
 
             <div>
               <label htmlFor="zip" className="block text-xs font-medium text-slate-300 mb-1.5">
-                Postal Code
+                Postal Code *
               </label>
               <input
                 id="zip"
                 type="text"
+                required
                 placeholder="78701"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
@@ -216,7 +297,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({ isOpen, onClose, o
               disabled={isSubmitting}
               className="px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 transition-colors shadow-sm shadow-blue-500/20 cursor-pointer"
             >
-              {isSubmitting ? 'Creating...' : 'Save Customer'}
+              {isSubmitting
+                ? customerToEdit
+                  ? 'Saving...'
+                  : 'Creating...'
+                : customerToEdit
+                  ? 'Save Changes'
+                  : 'Save Customer'}
             </button>
           </div>
         </form>

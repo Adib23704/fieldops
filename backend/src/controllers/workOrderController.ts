@@ -6,27 +6,78 @@ import {
   getWorkOrderById,
   listWorkOrders,
   transitionWorkOrderStatus,
+  updateWorkOrder,
 } from '../services/workOrderService';
 import { UnauthorizedError } from '../utils/errors';
 
-export const createWorkOrderSchema = z.object({
-  customerId: z.number().int().positive('Valid customer ID is required'),
-  technicianId: z.number().int().positive().nullable().optional(),
-  title: z.string().min(3, 'Title must be at least 3 characters').max(200),
-  description: z.string().min(5, 'Description must be at least 5 characters'),
-  category: z.string().min(2, 'Category is required').max(50),
-  priority: z.nativeEnum(OrderPriority).optional(),
-  scheduledStart: z.string().datetime().nullable().optional(),
-  scheduledEnd: z.string().datetime().nullable().optional(),
-});
+export const updateWorkOrderSchema = z
+  .object({
+    customerId: z.number().int().positive('Valid customer ID is required').optional(),
+    technicianId: z.number().int().positive().nullable().optional(),
+    title: z.string().min(3, 'Title must be at least 3 characters').max(200).optional(),
+    description: z.string().min(5, 'Description must be at least 5 characters').optional(),
+    category: z.string().min(2, 'Category is required').max(50).optional(),
+    priority: z.nativeEnum(OrderPriority).optional(),
+    scheduledStart: z.string().datetime().nullable().optional(),
+    scheduledEnd: z.string().datetime().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.scheduledStart && data.scheduledEnd) {
+        return new Date(data.scheduledEnd).getTime() > new Date(data.scheduledStart).getTime();
+      }
+      return true;
+    },
+    {
+      message: 'Scheduled end time must be after scheduled start time',
+      path: ['scheduledEnd'],
+    }
+  );
 
-export const transitionStatusSchema = z.object({
-  status: z.nativeEnum(OrderStatus),
-  reason: z.string().optional(),
-  technicianId: z.number().int().positive().nullable().optional(),
-  scheduledStart: z.string().datetime().nullable().optional(),
-  scheduledEnd: z.string().datetime().nullable().optional(),
-});
+export const createWorkOrderSchema = z
+  .object({
+    customerId: z.number().int().positive('Valid customer ID is required'),
+    technicianId: z.number().int().positive().nullable().optional(),
+    title: z.string().min(3, 'Title must be at least 3 characters').max(200),
+    description: z.string().min(5, 'Description must be at least 5 characters'),
+    category: z.string().min(2, 'Category is required').max(50),
+    priority: z.nativeEnum(OrderPriority).optional(),
+    scheduledStart: z.string().datetime().nullable().optional(),
+    scheduledEnd: z.string().datetime().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.scheduledStart && data.scheduledEnd) {
+        return new Date(data.scheduledEnd).getTime() > new Date(data.scheduledStart).getTime();
+      }
+      return true;
+    },
+    {
+      message: 'Scheduled end time must be after scheduled start time',
+      path: ['scheduledEnd'],
+    }
+  );
+
+export const transitionStatusSchema = z
+  .object({
+    status: z.nativeEnum(OrderStatus),
+    reason: z.string().optional(),
+    technicianId: z.number().int().positive().nullable().optional(),
+    scheduledStart: z.string().datetime().nullable().optional(),
+    scheduledEnd: z.string().datetime().nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.scheduledStart && data.scheduledEnd) {
+        return new Date(data.scheduledEnd).getTime() > new Date(data.scheduledStart).getTime();
+      }
+      return true;
+    },
+    {
+      message: 'Scheduled end time must be after scheduled start time',
+      path: ['scheduledEnd'],
+    }
+  );
 
 export const listOrders = async (
   req: Request,
@@ -110,6 +161,25 @@ export const updateStatus = async (
       validatedData.technicianId
     );
 
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError();
+    }
+
+    const id = Number(req.params.id);
+    const validatedData = updateWorkOrderSchema.parse(req.body);
+    const updated = await updateWorkOrder(id, validatedData, req.user);
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
     next(error);

@@ -5,6 +5,7 @@ import {
   Building2,
   Mail,
   MapPin,
+  Pencil,
   Phone,
   Plus,
   RefreshCw,
@@ -17,15 +18,18 @@ import { api } from '../../../api/client';
 import { CreateOrderModal } from '../../../components/CreateOrderModal';
 import { CustomerModal } from '../../../components/CustomerModal';
 import { ProtectedRoute } from '../../../components/ProtectedRoute';
+import { useAuth } from '../../../context/AuthContext';
 import type { Customer, WorkOrder } from '../../../types';
 
 export default function CustomersPage() {
+  const { user } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [_selectedCustomerForOrder, setSelectedCustomerForOrder] = useState<Customer | null>(null);
 
@@ -46,8 +50,15 @@ export default function CustomersPage() {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  const handleCustomerCreated = (newCust: Customer) => {
-    setCustomers((prev) => [newCust, ...prev]);
+  const handleCustomerSaved = (savedCust: Customer) => {
+    setCustomers((prev) => {
+      const exists = prev.some((c) => c.id === savedCust.id);
+      if (exists) {
+        return prev.map((c) => (c.id === savedCust.id ? savedCust : c));
+      }
+      return [savedCust, ...prev];
+    });
+    setCustomerToEdit(null);
   };
 
   const handleOrderCreated = (_newOrder: WorkOrder) => {
@@ -77,7 +88,10 @@ export default function CustomersPage() {
             </button>
             <button
               type="button"
-              onClick={() => setIsCustomerModalOpen(true)}
+              onClick={() => {
+                setCustomerToEdit(null);
+                setIsCustomerModalOpen(true);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-500/20 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -182,16 +196,33 @@ export default function CustomersPage() {
                     <span>{cust._count?.workOrders || 0} work orders</span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCustomerForOrder(cust);
-                      setIsOrderModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
-                  >
-                    + New Job
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {user?.role === 'ADMIN' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomerToEdit(cust);
+                          setIsCustomerModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                        title="Edit customer account (Admin only)"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Edit
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCustomerForOrder(cust);
+                        setIsOrderModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                    >
+                      + New Job
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -200,8 +231,12 @@ export default function CustomersPage() {
 
         <CustomerModal
           isOpen={isCustomerModalOpen}
-          onClose={() => setIsCustomerModalOpen(false)}
-          onCreated={handleCustomerCreated}
+          onClose={() => {
+            setIsCustomerModalOpen(false);
+            setCustomerToEdit(null);
+          }}
+          onCreated={handleCustomerSaved}
+          customerToEdit={customerToEdit}
         />
 
         <CreateOrderModal

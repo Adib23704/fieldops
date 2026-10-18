@@ -4,6 +4,7 @@ import {
   createOrder,
   getOrder,
   listOrders,
+  updateOrder,
   updateStatus,
 } from '../controllers/workOrderController';
 import { authenticateJWT, requireRole } from '../middleware/auth';
@@ -15,6 +16,7 @@ router.use(authenticateJWT);
 router.get('/', listOrders);
 router.post('/', requireRole('ADMIN', 'DISPATCHER'), createOrder);
 router.get('/:id', getOrder);
+router.patch('/:id', requireRole('ADMIN'), updateOrder);
 router.patch('/:id/status', updateStatus);
 
 router.post('/:id/items', createItem);

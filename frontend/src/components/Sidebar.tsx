@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, ClipboardList, LogOut, Menu, Sparkles, Wrench, X } from 'lucide-react';
+import { Building2, ClipboardList, LogOut, Menu, Sparkles, Users, Wrench, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type React from 'react';
@@ -57,6 +57,12 @@ export const Sidebar: React.FC = () => {
       href: '/customers',
       label: 'Customers',
       icon: Building2,
+      roles: ['ADMIN', 'DISPATCHER'],
+    },
+    {
+      href: '/technicians',
+      label: 'Technicians',
+      icon: Users,
       roles: ['ADMIN', 'DISPATCHER'],
     },
     {

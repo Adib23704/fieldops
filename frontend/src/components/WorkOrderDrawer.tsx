@@ -6,6 +6,7 @@ import {
   Clock,
   ExternalLink,
   MapPin,
+  Pencil,
   Phone,
   User,
   Wrench,
@@ -14,6 +15,7 @@ import {
 import Link from 'next/link';
 import type React from 'react';
 import { useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import type { WorkOrder } from '../types';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
@@ -21,9 +23,11 @@ import { StatusBadge } from './StatusBadge';
 interface WorkOrderDrawerProps {
   order: WorkOrder | null;
   onClose: () => void;
+  onEdit?: (order: WorkOrder) => void;
 }
 
-export const WorkOrderDrawer: React.FC<WorkOrderDrawerProps> = ({ order, onClose }) => {
+export const WorkOrderDrawer: React.FC<WorkOrderDrawerProps> = ({ order, onClose, onEdit }) => {
+  const { user } = useAuth();
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -87,13 +91,26 @@ export const WorkOrderDrawer: React.FC<WorkOrderDrawerProps> = ({ order, onClose
 
           <div className="px-5 py-2.5 bg-[#0e1117] border-b border-[#1f2533] flex items-center justify-between">
             <span className="text-xs text-slate-400">Quick inspection</span>
-            <Link
-              href={`/work-orders/${order.id}`}
-              className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              Open full details
-              <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center gap-3">
+              {user?.role === 'ADMIN' && onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(order)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Edit work order (Admin only)"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit Order
+                </button>
+              )}
+              <Link
+                href={`/work-orders/${order.id}`}
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Open full details
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-5 space-y-6 text-sm">
@@ -119,13 +136,15 @@ export const WorkOrderDrawer: React.FC<WorkOrderDrawerProps> = ({ order, onClose
                       <span className="text-xs text-slate-400">({order.customer.companyName})</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
-                    <span>
-                      {order.customer.address}, {order.customer.city}
-                      {order.customer.postalCode ? ` ${order.customer.postalCode}` : ''}
-                    </span>
-                  </div>
+                  {(order.customer.address || order.customer.city) && (
+                    <div className="flex items-start gap-2 text-xs text-slate-400">
+                      <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                      <span>
+                        {[order.customer.address, order.customer.city].filter(Boolean).join(', ')}
+                        {order.customer.postalCode ? ` ${order.customer.postalCode}` : ''}
+                      </span>
+                    </div>
+                  )}
                   {order.customer.phone && (
                     <div className="flex items-center gap-2 text-xs text-slate-400">
                       <Phone className="w-4 h-4 text-slate-500 shrink-0" />

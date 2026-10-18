@@ -109,3 +109,48 @@ export const createCustomer = async (
     next(error);
   }
 };
+
+export const updateCustomerSchema = customerSchema.partial();
+
+export const updateCustomer = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) {
+      throw new NotFoundError('Customer ID is invalid');
+    }
+
+    const existing = await prisma.customer.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundError(`Customer #${id} not found`);
+    }
+
+    const validatedData = updateCustomerSchema.parse(req.body);
+    const data: Prisma.CustomerUpdateInput = {};
+
+    if (validatedData.name !== undefined) data.name = validatedData.name.trim();
+    if (validatedData.companyName !== undefined)
+      data.companyName = validatedData.companyName?.trim() || null;
+    if (validatedData.email !== undefined) data.email = validatedData.email?.trim() || null;
+    if (validatedData.phone !== undefined) data.phone = validatedData.phone.trim();
+    if (validatedData.address !== undefined) data.address = validatedData.address.trim();
+    if (validatedData.city !== undefined) data.city = validatedData.city.trim();
+    if (validatedData.postalCode !== undefined)
+      data.postalCode = validatedData.postalCode?.trim() || null;
+
+    const customer = await prisma.customer.update({
+      where: { id },
+      data,
+    });
+
+    res.status(200).json({ success: true, data: customer });
+  } catch (error) {
+    next(error);
+  }
+};

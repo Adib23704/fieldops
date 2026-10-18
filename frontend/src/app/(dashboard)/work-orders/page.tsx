@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -45,6 +46,7 @@ export default function WorkOrdersPage() {
   const [technicians, setTechnicians] = useState<Array<{ id: number; fullName: string }>>([]);
 
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
+  const [orderToEdit, setOrderToEdit] = useState<WorkOrder | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
   const fetchOrders = useCallback(async () => {
@@ -96,10 +98,19 @@ export default function WorkOrdersPage() {
     }
   }, [user]);
 
-  const handleOrderCreated = (newOrder: WorkOrder) => {
-    setOrders((prev) => [newOrder, ...prev]);
-    setTotalCount((c) => c + 1);
-    setSelectedOrder(newOrder);
+  const handleOrderSaved = (savedOrder: WorkOrder) => {
+    setOrders((prev) => {
+      const exists = prev.some((o) => o.id === savedOrder.id);
+      if (exists) {
+        return prev.map((o) => (o.id === savedOrder.id ? savedOrder : o));
+      }
+      return [savedOrder, ...prev];
+    });
+    if (!orderToEdit) {
+      setTotalCount((c) => c + 1);
+    }
+    setSelectedOrder(savedOrder);
+    setOrderToEdit(null);
   };
 
   const formatCurrency = (val: number | string) => {
@@ -144,7 +155,10 @@ export default function WorkOrdersPage() {
           {user?.role !== 'TECHNICIAN' && (
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => {
+                setOrderToEdit(null);
+                setIsCreateModalOpen(true);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm shadow-blue-500/20 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -405,12 +419,33 @@ export default function WorkOrdersPage() {
                       </td>
 
                       <td className="py-3.5 px-3 text-right">
-                        <span
-                          className="inline-flex p-1 text-slate-500 group-hover:text-blue-400 transition-colors"
-                          title="View order drawer"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </span>
+                        <div className="inline-flex items-center gap-1.5">
+                          {user?.role === 'ADMIN' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOrderToEdit(order);
+                                setIsCreateModalOpen(true);
+                              }}
+                              className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-[#1f2533] transition-colors cursor-pointer"
+                              title="Edit work order (Admin only)"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOrder(order);
+                            }}
+                            className="inline-flex p-1 text-slate-500 group-hover:text-blue-400 transition-colors cursor-pointer"
+                            title="View order drawer"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -421,12 +456,24 @@ export default function WorkOrdersPage() {
         </div>
       </div>
 
-      <WorkOrderDrawer order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      <WorkOrderDrawer
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        onEdit={(order) => {
+          setSelectedOrder(null);
+          setOrderToEdit(order);
+          setIsCreateModalOpen(true);
+        }}
+      />
 
       <CreateOrderModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreated={handleOrderCreated}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setOrderToEdit(null);
+        }}
+        onCreated={handleOrderSaved}
+        orderToEdit={orderToEdit}
       />
     </div>
   );

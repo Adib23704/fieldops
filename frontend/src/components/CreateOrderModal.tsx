@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Sparkles, X } from 'lucide-react';
+import { AlertCircle, Calendar, Sparkles, X } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
@@ -10,6 +10,7 @@ interface CreateOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (order: WorkOrder) => void;
+  orderToEdit?: WorkOrder | null;
 }
 
 interface TechOption {
@@ -19,10 +20,19 @@ interface TechOption {
   activeOrdersCount: number;
 }
 
+const toInputDateTime = (dateStr?: string | Date | null) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   isOpen,
   onClose,
   onCreated,
+  orderToEdit,
 }) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [technicians, setTechnicians] = useState<TechOption[]>([]);
@@ -40,6 +50,10 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [triageSuggestion, setTriageSuggestion] = useState<TriageResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const isScheduleInvalid = Boolean(
+    scheduledStart && scheduledEnd && new Date(scheduledEnd) <= new Date(scheduledStart)
+  );
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -51,7 +65,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         ]);
         setCustomers(custRes);
         setTechnicians(techRes);
-        if (custRes.length > 0 && customerId === '') {
+        if (custRes.length > 0 && customerId === '' && !orderToEdit) {
           setCustomerId(custRes[0].id);
         }
       } catch {
@@ -60,7 +74,33 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     };
 
     loadFormData();
-  }, [isOpen, customerId]);
+  }, [isOpen, customerId, orderToEdit]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (orderToEdit) {
+      setCustomerId(orderToEdit.customerId || orderToEdit.customer?.id || '');
+      setTitle(orderToEdit.title || '');
+      setDescription(orderToEdit.description || '');
+      setCategory(orderToEdit.category || 'HVAC');
+      setPriority(orderToEdit.priority || 'MEDIUM');
+      setTechnicianId(orderToEdit.technicianId || orderToEdit.technician?.id || '');
+      setScheduledStart(toInputDateTime(orderToEdit.scheduledStart));
+      setScheduledEnd(toInputDateTime(orderToEdit.scheduledEnd));
+      setTriageSuggestion(null);
+    } else {
+      setTitle('');
+      setDescription('');
+      setCategory('HVAC');
+      setPriority('MEDIUM');
+      setTechnicianId('');
+      setScheduledStart('');
+      setScheduledEnd('');
+      setTriageSuggestion(null);
+    }
+    setError(null);
+  }, [isOpen, orderToEdit]);
 
   if (!isOpen) return null;
 
@@ -103,22 +143,51 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       return;
     }
 
+    if (scheduledStart && scheduledEnd) {
+      const startMs = new Date(scheduledStart).getTime();
+      const endMs = new Date(scheduledEnd).getTime();
+      if (endMs <= startMs) {
+        setError(
+          'Scheduled end time must be after scheduled start time (cannot be earlier or the same).'
+        );
+        return;
+      }
+    } else if (scheduledStart && !scheduledEnd) {
+      setError('Please provide a scheduled end time when setting a scheduled start time.');
+      return;
+    } else if (!scheduledStart && scheduledEnd) {
+      setError('Please provide a scheduled start time when setting a scheduled end time.');
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
 
     try {
-      const newOrder = await api.workOrders.create({
+      const payload = {
         customerId: Number(customerId),
         title: title.trim(),
         description: description.trim(),
         category,
         priority,
-        technicianId: technicianId ? Number(technicianId) : undefined,
-        scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : undefined,
-        scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : undefined,
-      });
+        technicianId: technicianId ? Number(technicianId) : null,
+        scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : null,
+        scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
+      };
 
-      onCreated(newOrder);
+      if (orderToEdit) {
+        const updated = await api.workOrders.update(orderToEdit.id, payload);
+        onCreated(updated);
+      } else {
+        const newOrder = await api.workOrders.create({
+          ...payload,
+          technicianId: technicianId ? Number(technicianId) : undefined,
+          scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : undefined,
+          scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : undefined,
+        });
+        onCreated(newOrder);
+      }
+
       onClose();
       setTitle('');
       setDescription('');
@@ -129,7 +198,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to create work order.');
+        setError(orderToEdit ? 'Failed to update work order.' : 'Failed to create work order.');
       }
     } finally {
       setIsSubmitting(false);
@@ -148,9 +217,13 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       <div className="relative bg-[#11141c] border border-[#202634] rounded-2xl max-w-xl w-full shadow-2xl p-6 z-10 space-y-5">
         <div className="flex items-start justify-between pb-4 border-b border-[#1f2533]">
           <div>
-            <h2 className="text-base font-semibold text-slate-100">New Work Order</h2>
+            <h2 className="text-base font-semibold text-slate-100">
+              {orderToEdit ? `Edit Work Order (${orderToEdit.orderNumber})` : 'New Work Order'}
+            </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Create and dispatch a new field service request
+              {orderToEdit
+                ? 'Update assignment, schedule, or scope details'
+                : 'Create and dispatch a new field service request'}
             </p>
           </div>
 
@@ -322,32 +395,64 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="start" className="block text-xs font-medium text-slate-300 mb-1.5">
-                Scheduled Start
-              </label>
-              <input
-                id="start"
-                type="datetime-local"
-                value={scheduledStart}
-                onChange={(e) => setScheduledStart(e.target.value)}
-                className="w-full text-xs rounded-lg border border-[#202634] bg-[#0c0e14] text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-              />
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor="start"
+                  className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                  Scheduled Start
+                </label>
+                <input
+                  id="start"
+                  type="datetime-local"
+                  value={scheduledStart}
+                  max={scheduledEnd || undefined}
+                  onChange={(e) => setScheduledStart(e.target.value)}
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  className={`w-full text-xs rounded-lg border bg-[#0c0e14] text-slate-200 px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 cursor-pointer transition-colors ${
+                    isScheduleInvalid
+                      ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-[#202634] focus:border-blue-500 focus:ring-blue-500/20'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="end"
+                  className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                  Scheduled End
+                </label>
+                <input
+                  id="end"
+                  type="datetime-local"
+                  value={scheduledEnd}
+                  min={scheduledStart || undefined}
+                  onChange={(e) => setScheduledEnd(e.target.value)}
+                  onClick={(e) => e.currentTarget.showPicker?.()}
+                  className={`w-full text-xs rounded-lg border bg-[#0c0e14] text-slate-200 px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 cursor-pointer transition-colors ${
+                    isScheduleInvalid
+                      ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/20'
+                      : 'border-[#202634] focus:border-blue-500 focus:ring-blue-500/20'
+                  }`}
+                />
+              </div>
             </div>
 
-            <div>
-              <label htmlFor="end" className="block text-xs font-medium text-slate-300 mb-1.5">
-                Scheduled End
-              </label>
-              <input
-                id="end"
-                type="datetime-local"
-                value={scheduledEnd}
-                onChange={(e) => setScheduledEnd(e.target.value)}
-                className="w-full text-xs rounded-lg border border-[#202634] bg-[#0c0e14] text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-              />
-            </div>
+            {isScheduleInvalid && (
+              <div className="text-[11px] text-red-400 flex items-center gap-1.5 pt-0.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Scheduled end time must be after scheduled start time (cannot be earlier or the
+                  same).
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="pt-4 border-t border-[#1f2533] flex items-center justify-end gap-2.5">
@@ -361,10 +466,16 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isScheduleInvalid}
               className="px-4 py-2 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 transition-colors shadow-sm shadow-blue-500/20 cursor-pointer"
             >
-              {isSubmitting ? 'Creating...' : 'Create Work Order'}
+              {isSubmitting
+                ? orderToEdit
+                  ? 'Saving...'
+                  : 'Creating...'
+                : orderToEdit
+                  ? 'Save Changes'
+                  : 'Create Work Order'}
             </button>
           </div>
         </form>

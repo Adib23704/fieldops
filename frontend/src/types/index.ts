@@ -23,6 +23,25 @@ export interface User {
   isActive: boolean;
 }
 
+export interface Technician {
+  id: number;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  role: UserRole;
+  skillCategories: string[];
+  isActive: boolean;
+  activeOrdersCount: number;
+  currentAssignments?: Array<{
+    id: number;
+    orderNumber: string;
+    status: OrderStatus;
+    priority: OrderPriority;
+    scheduledStart: string | null;
+    scheduledEnd: string | null;
+  }>;
+}
+
 export interface Customer {
   id: number;
   name: string;

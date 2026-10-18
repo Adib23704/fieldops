@@ -2,6 +2,7 @@ import type {
   AiTriageLog,
   Customer,
   OrderStatus,
+  Technician,
   TriageMetrics,
   TriageResult,
   User,
@@ -122,6 +123,24 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
+    update: (
+      id: number,
+      data: {
+        customerId?: number;
+        title?: string;
+        description?: string;
+        category?: string;
+        priority?: string;
+        technicianId?: number | null;
+        scheduledStart?: string | null;
+        scheduledEnd?: string | null;
+      }
+    ) =>
+      apiRequest<WorkOrder>(`/work-orders/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
     updateStatus: (
       id: number,
       data: {
@@ -182,21 +201,56 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    update: (
+      id: number,
+      data: {
+        name?: string;
+        companyName?: string;
+        email?: string;
+        phone?: string;
+        address?: string;
+        city?: string;
+        postalCode?: string;
+      }
+    ) =>
+      apiRequest<Customer>(`/customers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
   },
 
   technicians: {
-    list: () =>
-      apiRequest<
-        Array<{
-          id: number;
-          fullName: string;
-          email: string;
-          phone: string | null;
-          role: string;
-          skillCategories: string[];
-          activeOrdersCount: number;
-        }>
-      >('/users/technicians'),
+    list: (includeInactive = false) =>
+      apiRequest<Technician[]>(
+        `/users/technicians${includeInactive ? '?includeInactive=true' : ''}`
+      ),
+    create: (data: {
+      fullName: string;
+      email: string;
+      phone: string;
+      password: string;
+      skillCategories?: string[];
+      isActive?: boolean;
+    }) =>
+      apiRequest<Technician>('/users/technicians', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (
+      id: number,
+      data: {
+        fullName?: string;
+        email?: string;
+        phone?: string;
+        password?: string;
+        skillCategories?: string[];
+        isActive?: boolean;
+      }
+    ) =>
+      apiRequest<Technician>(`/users/technicians/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
   },
 
   ai: {

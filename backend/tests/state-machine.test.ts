@@ -149,6 +149,66 @@ describe('Work Order State Machine & Conflict Rules', () => {
       );
       expect(result.status).toBe('COMPLETED');
     });
+
+    it('should reject transition to SCHEDULED when scheduledEnd is earlier than scheduledStart', async () => {
+      const mockOrder = {
+        id: 105,
+        status: 'DRAFT' as OrderStatus,
+        technicianId: 2,
+        items: [],
+      };
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: TxCallback) => {
+        const tx = {
+          workOrder: {
+            findUnique: jest.fn().mockResolvedValue(mockOrder),
+          },
+        };
+        return callback(tx);
+      });
+
+      await expect(
+        transitionWorkOrderStatus(
+          105,
+          'SCHEDULED',
+          undefined,
+          mockDispatcher,
+          '2026-10-18T16:00:00Z',
+          '2026-10-18T14:00:00Z',
+          2
+        )
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('should reject transition to SCHEDULED when scheduledEnd equals scheduledStart', async () => {
+      const mockOrder = {
+        id: 106,
+        status: 'DRAFT' as OrderStatus,
+        technicianId: 2,
+        items: [],
+      };
+
+      jest.spyOn(prisma, '$transaction').mockImplementation(async (callback: TxCallback) => {
+        const tx = {
+          workOrder: {
+            findUnique: jest.fn().mockResolvedValue(mockOrder),
+          },
+        };
+        return callback(tx);
+      });
+
+      await expect(
+        transitionWorkOrderStatus(
+          106,
+          'SCHEDULED',
+          undefined,
+          mockDispatcher,
+          '2026-10-18T14:00:00Z',
+          '2026-10-18T14:00:00Z',
+          2
+        )
+      ).rejects.toThrow(ValidationError);
+    });
   });
 
   describe('Technician Scheduling Conflict Prevention', () => {

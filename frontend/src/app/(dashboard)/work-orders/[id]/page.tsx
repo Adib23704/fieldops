@@ -8,12 +8,14 @@ import {
   History,
   Mail,
   MapPin,
+  Pencil,
   Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../../../api/client';
+import { CreateOrderModal } from '../../../../components/CreateOrderModal';
 import { LineItemsEditor } from '../../../../components/LineItemsEditor';
 import { PriorityBadge } from '../../../../components/PriorityBadge';
 import { StatusBadge } from '../../../../components/StatusBadge';
@@ -28,6 +30,7 @@ export default function WorkOrderDetailPage() {
   const orderId = Number(idStr);
 
   const [order, setOrder] = useState<WorkOrder | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,15 +126,27 @@ export default function WorkOrderDetailPage() {
             <StatusBadge status={order.status} />
           </div>
 
-          <div className="text-right">
-            <span className="text-xs text-slate-400 block">Total Balance</span>
-            <span className="font-mono text-lg font-bold text-emerald-400">
-              $
-              {(typeof order.totalAmount === 'string'
-                ? parseFloat(order.totalAmount)
-                : order.totalAmount || 0
-              ).toFixed(2)}
-            </span>
+          <div className="flex items-center gap-3">
+            {user?.role === 'ADMIN' && (
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors shadow-sm"
+              >
+                <Pencil className="w-3.5 h-3.5 text-blue-400" />
+                Edit Order
+              </button>
+            )}
+            <div className="text-right">
+              <span className="text-xs text-slate-400 block">Total Balance</span>
+              <span className="font-mono text-lg font-bold text-emerald-400">
+                $
+                {(typeof order.totalAmount === 'string'
+                  ? parseFloat(order.totalAmount)
+                  : order.totalAmount || 0
+                ).toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -293,6 +308,15 @@ export default function WorkOrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {user?.role === 'ADMIN' && (
+        <CreateOrderModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onCreated={handleOrderUpdated}
+          orderToEdit={order}
+        />
+      )}
     </div>
   );
 }

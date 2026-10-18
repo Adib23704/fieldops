@@ -24,6 +24,17 @@ export interface CreateWorkOrderInput {
   scheduledEnd?: string | Date | null;
 }
 
+export interface UpdateWorkOrderInput {
+  customerId?: number;
+  technicianId?: number | null;
+  title?: string;
+  description?: string;
+  category?: string;
+  priority?: OrderPriority;
+  scheduledStart?: string | Date | null;
+  scheduledEnd?: string | Date | null;
+}
+
 export interface WorkOrderFilters {
   status?: OrderStatus;
   priority?: OrderPriority;
@@ -191,7 +202,7 @@ export const listWorkOrders = async (filters: WorkOrderFilters, currentUser: Aut
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
-        customer: { select: { id: true, name: true, companyName: true, phone: true } },
+        customer: true,
         technician: { select: { id: true, fullName: true, email: true } },
         _count: { select: { items: true } },
       },
@@ -350,6 +361,129 @@ export const transitionWorkOrderStatus = async (
             reason: reason ? reason.trim() : null,
           },
         },
+      },
+      include: {
+        customer: true,
+        technician: {
+          select: { id: true, fullName: true, email: true, phone: true },
+        },
+        items: true,
+        statusHistory: {
+          include: {
+            changedBy: { select: { id: true, fullName: true, role: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    return updatedOrder;
+  });
+};
+
+export const updateWorkOrder = async (
+  workOrderId: number,
+  input: UpdateWorkOrderInput,
+  currentUser: AuthUser
+) => {
+  if (currentUser.role !== 'ADMIN') {
+    throw new ForbiddenError('Only administrators can edit work orders');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.workOrder.findUnique({
+      where: { id: workOrderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      throw new NotFoundError(`Work order #${workOrderId} not found`);
+    }
+
+    if (input.customerId && input.customerId !== order.customerId) {
+      const customer = await tx.customer.findUnique({
+        where: { id: input.customerId },
+      });
+      if (!customer) {
+        throw new NotFoundError(`Customer #${input.customerId} not found`);
+      }
+    }
+
+    const targetTechId = input.technicianId !== undefined ? input.technicianId : order.technicianId;
+    const targetStart =
+      input.scheduledStart !== undefined
+        ? input.scheduledStart
+          ? new Date(input.scheduledStart)
+          : null
+        : order.scheduledStart;
+    const targetEnd =
+      input.scheduledEnd !== undefined
+        ? input.scheduledEnd
+          ? new Date(input.scheduledEnd)
+          : null
+        : order.scheduledEnd;
+
+    if (targetStart && targetEnd) {
+      if (targetEnd <= targetStart) {
+        throw new ValidationError('Scheduled end time must be after scheduled start time');
+      }
+
+      if (targetTechId) {
+        const tech = await tx.user.findUnique({
+          where: { id: targetTechId },
+        });
+        if (!tech?.isActive) {
+          throw new ValidationError('Assigned technician does not exist or is inactive');
+        }
+
+        await checkTechnicianConflict(tx, targetTechId, targetStart, targetEnd, workOrderId);
+      }
+    }
+
+    let statusUpdate = order.status;
+    if (order.status === 'DRAFT' && targetTechId && targetStart && targetEnd) {
+      statusUpdate = 'SCHEDULED';
+    }
+
+    const updateData: Prisma.WorkOrderUpdateInput = {};
+    if (input.title !== undefined) updateData.title = input.title.trim();
+    if (input.description !== undefined) updateData.description = input.description.trim();
+    if (input.category !== undefined) updateData.category = input.category.trim();
+    if (input.priority !== undefined) updateData.priority = input.priority;
+    if (input.customerId !== undefined) {
+      updateData.customer = { connect: { id: input.customerId } };
+    }
+    if (input.technicianId !== undefined) {
+      updateData.technician = input.technicianId
+        ? { connect: { id: input.technicianId } }
+        : { disconnect: true };
+    }
+    if (input.scheduledStart !== undefined) {
+      updateData.scheduledStart = input.scheduledStart ? new Date(input.scheduledStart) : null;
+    }
+    if (input.scheduledEnd !== undefined) {
+      updateData.scheduledEnd = input.scheduledEnd ? new Date(input.scheduledEnd) : null;
+    }
+    if (statusUpdate !== order.status) {
+      updateData.status = statusUpdate;
+    }
+
+    const updatedOrder = await tx.workOrder.update({
+      where: { id: workOrderId },
+      data: {
+        ...updateData,
+        ...(statusUpdate !== order.status
+          ? {
+              statusHistory: {
+                create: {
+                  oldStatus: order.status,
+                  newStatus: statusUpdate,
+                  changedById: currentUser.id,
+                  reason: 'Status moved to SCHEDULED upon assigning schedule & technician',
+                },
+              },
+            }
+          : {}),
       },
       include: {
         customer: true,
