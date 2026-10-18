@@ -400,7 +400,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <div>
                 <label
                   htmlFor="start"
-                  className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5"
+                  className="block text-xs font-medium text-slate-300 mb-1.5 items-center gap-1.5"
                 >
                   <Calendar className="w-3.5 h-3.5 text-blue-400" />
                   Scheduled Start
@@ -412,7 +412,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   max={scheduledEnd || undefined}
                   onChange={(e) => setScheduledStart(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
-                  className={`w-full text-xs rounded-lg border bg-[#0c0e14] text-slate-200 px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 cursor-pointer transition-colors ${
+                  className={`w-full text-xs rounded-lg border bg-[#0c0e14] text-slate-200 px-3 py-2 scheme-dark focus:outline-none focus:ring-2 cursor-pointer transition-colors ${
                     isScheduleInvalid
                       ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/20'
                       : 'border-[#202634] focus:border-blue-500 focus:ring-blue-500/20'
@@ -423,7 +423,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <div>
                 <label
                   htmlFor="end"
-                  className="block text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5"
+                  className="block text-xs font-medium text-slate-300 mb-1.5 items-center gap-1.5"
                 >
                   <Calendar className="w-3.5 h-3.5 text-blue-400" />
                   Scheduled End
@@ -435,7 +435,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   min={scheduledStart || undefined}
                   onChange={(e) => setScheduledEnd(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
-                  className={`w-full text-xs rounded-lg border bg-[#0c0e14] text-slate-200 px-3 py-2 [color-scheme:dark] focus:outline-none focus:ring-2 cursor-pointer transition-colors ${
+                  className={`w-full text-xs rounded-lg border bg-[#0c0e14] text-slate-200 px-3 py-2 scheme-dark focus:outline-none focus:ring-2 cursor-pointer transition-colors ${
                     isScheduleInvalid
                       ? 'border-red-500/80 focus:border-red-500 focus:ring-red-500/20'
                       : 'border-[#202634] focus:border-blue-500 focus:ring-blue-500/20'

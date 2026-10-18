@@ -108,10 +108,10 @@ Push the database schema and seed initial data:
 
 ```bash
 # Push Prisma schema to the database
-pnpm run db:push
+pnpm db:push
 
 # Seed demo users, customers, technicians, and work orders
-pnpm run db:seed
+pnpm db:seed
 ```
 
 Run tests to verify the setup:
@@ -123,7 +123,7 @@ pnpm test
 Start the backend development server:
 
 ```bash
-pnpm run dev
+pnpm dev
 ```
 
 The API will be running at `http://localhost:5000`.
@@ -153,7 +153,7 @@ BACKEND_URL=http://127.0.0.1:5000
 Start the Next.js development server:
 
 ```bash
-pnpm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
