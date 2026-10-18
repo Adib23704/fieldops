@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Lint, Build & Test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - uses: pnpm/setup@v3
+        with:
+          version: latest
+          runtime: node@24
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Biome Linter & Format Check
+        run: pnpm lint
+
+      - name: Compile TypeScript
+        run: pnpm build
+
+      - name: Run Jest Test Suite
+        env:
+          PORT: 5000
+          NODE_ENV: test
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/fieldops_test"
+          JWT_SECRET: "ci-test-jwt-secret-key-32-characters-minimum"
+          JWT_EXPIRES_IN: "1h"
+          AI_API_KEY: ""
+        run: pnpm test
+
+  frontend:
+    name: Frontend (Lint & Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/setup@v3
+        with:
+          version: latest
+          runtime: node@24
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome Linter & Format Check
+        run: pnpm lint
+
+      - name: Build Next.js Application
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          BACKEND_URL: "http://127.0.0.1:5000"
+        run: pnpm build
