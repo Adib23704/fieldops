@@ -1,6 +1,8 @@
 name: Dependency Audit
 
 on:
+  push:
+    branches: [master]
   pull_request:
     branches: [master]
   schedule:
@@ -20,7 +22,8 @@ jobs:
         with:
           version: latest
           runtime: node@24
-          cache: true
+          cache: false
+          install: false
 
       - name: Audit Backend Dependencies (High/Critical)
         run: |

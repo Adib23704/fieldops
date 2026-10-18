@@ -21,11 +21,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - uses: pnpm/setup@v3
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v3
         with:
           version: latest
           runtime: node@24
+          working-directory: backend
           cache: true
+          cache-dependency-path: backend/pnpm-lock.yaml
+          install: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -59,12 +63,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Install pnpm
+      - name: Setup pnpm and Node.js
         uses: pnpm/setup@v3
         with:
           version: latest
           runtime: node@24
+          working-directory: frontend
           cache: true
+          cache-dependency-path: frontend/pnpm-lock.yaml
+          install: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
