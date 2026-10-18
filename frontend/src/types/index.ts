@@ -133,22 +133,24 @@ export interface TriageMetrics {
 export interface AiTriageLog {
   id: number;
   workOrderId: number | null;
-  inputDescription: string;
-  inputCategoryHint: string | null;
+  rawPromptText?: string;
+  inputDescription?: string;
+  inputCategoryHint?: string | null;
   predictedUrgency: OrderPriority;
   predictedCategory: string;
-  confidenceScore: number;
+  confidenceScore: number | string;
   extractedSymptoms: string[];
   reasoningSummary: string;
   suggestedTechId: number | null;
   usedFallback: boolean;
-  latencyMs: number;
-  dispatcherAgreed: boolean | null;
-  overrideUrgency: OrderPriority | null;
+  dispatcherOverrideUrgency?: OrderPriority | null;
+  dispatcherAgreed?: boolean | null;
+  overrideUrgency?: OrderPriority | null;
+  evaluatedAt?: string | null;
   createdAt: string;
   suggestedTech?: {
     id: number;
     fullName: string;
-    role: string;
+    role?: string;
   } | null;
 }

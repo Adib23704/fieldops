@@ -6,6 +6,7 @@ import {
   type SuggestedTech,
 } from '../src/ai/triageEngine';
 import prisma from '../src/db/prisma';
+import { config } from '../src/config';
 
 interface BenchmarkCase {
   input: string;
@@ -178,29 +179,36 @@ describe('AI Triage & Decision Benchmark Suite', () => {
 
   describe('Graceful Fallback & Audit Logging', () => {
     it('should execute heuristic triage and log execution when API key is not configured', async () => {
-      jest.spyOn(prisma.user, 'findMany').mockResolvedValueOnce([
-        {
-          id: 10,
-          fullName: 'Alex Rivera',
-          role: 'TECHNICIAN',
-          skillCategories: ['PLUMBING'],
-          assignedOrders: [{ id: 101 }],
-        },
-      ] as unknown as never);
+      const originalKey = config.AI_API_KEY;
+      (config as { AI_API_KEY: string }).AI_API_KEY = '';
 
-      jest.spyOn(prisma.aiTriageLog, 'create').mockResolvedValueOnce({
-        id: 55,
-      } as unknown as never);
+      try {
+        jest.spyOn(prisma.user, 'findMany').mockResolvedValueOnce([
+          {
+            id: 10,
+            fullName: 'Alex Rivera',
+            role: 'TECHNICIAN',
+            skillCategories: ['PLUMBING'],
+            assignedOrders: [{ id: 101 }],
+          },
+        ] as unknown as never);
 
-      const result = await runTriage({
-        description: 'Sewer line overflowing, active flood in basement.',
-      });
+        jest.spyOn(prisma.aiTriageLog, 'create').mockResolvedValueOnce({
+          id: 55,
+        } as unknown as never);
 
-      expect(result.usedFallback).toBe(true);
-      expect(result.predictedUrgency).toBe('EMERGENCY');
-      expect(result.predictedCategory).toBe('PLUMBING');
-      expect(result.suggestedTechnician?.id).toBe(10);
-      expect(result.confidenceScore).toBeGreaterThan(0.7);
+        const result = await runTriage({
+          description: 'Sewer line overflowing, active flood in basement.',
+        });
+
+        expect(result.usedFallback).toBe(true);
+        expect(result.predictedUrgency).toBe('EMERGENCY');
+        expect(result.predictedCategory).toBe('PLUMBING');
+        expect(result.suggestedTechnician?.id).toBe(10);
+        expect(result.confidenceScore).toBeGreaterThan(0.7);
+      } finally {
+        (config as { AI_API_KEY: string }).AI_API_KEY = originalKey;
+      }
     });
 
     it('should calculate telemetry metrics correctly', async () => {

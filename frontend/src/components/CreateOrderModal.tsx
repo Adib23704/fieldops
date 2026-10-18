@@ -237,7 +237,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 <div>
                   <div className="font-semibold text-blue-300">
                     AI Triage Recommendation (
-                    {triageSuggestion.usedFallback ? 'Heuristic Matrix' : 'Gemini AI'})
+                    {triageSuggestion.usedFallback ? 'Heuristic Matrix' : 'Live LLM'})
                   </div>
                   <div className="text-[11px] text-slate-300 mt-0.5">
                     Suggested Urgency:{' '}

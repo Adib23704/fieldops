@@ -64,7 +64,17 @@ export const listTriageLogs = async (
       },
     });
 
-    res.status(200).json({ success: true, data: logs });
+    const mappedLogs = logs.map((log) => ({
+      ...log,
+      inputDescription: log.rawPromptText,
+      dispatcherAgreed:
+        log.dispatcherOverrideUrgency !== null
+          ? log.dispatcherOverrideUrgency === log.predictedUrgency
+          : null,
+      overrideUrgency: log.dispatcherOverrideUrgency,
+    }));
+
+    res.status(200).json({ success: true, data: mappedLogs });
   } catch (error) {
     next(error);
   }
@@ -95,7 +105,14 @@ export const evaluateTriageLog = async (
       },
     });
 
-    res.status(200).json({ success: true, data: updated });
+    const mapped = {
+      ...updated,
+      inputDescription: updated.rawPromptText,
+      dispatcherAgreed: overrideUrgency === updated.predictedUrgency,
+      overrideUrgency: updated.dispatcherOverrideUrgency,
+    };
+
+    res.status(200).json({ success: true, data: mapped });
   } catch (error) {
     next(error);
   }

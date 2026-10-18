@@ -280,7 +280,7 @@ export default function TriageStudioPage() {
                 <span className="text-xs text-slate-400">
                   Engine:{' '}
                   <span className="text-blue-400 font-medium">
-                    {triageResult.usedFallback ? 'Heuristic Matrix' : 'Gemini AI'}
+                    {triageResult.usedFallback ? 'Heuristic Matrix' : 'Live LLM Engine'}
                   </span>
                 </span>
               )}
@@ -357,7 +357,7 @@ export default function TriageStudioPage() {
                   <div className="p-2.5 rounded-lg border border-[#1d222e] bg-[#0c0e14]">
                     <span className="text-[11px] text-slate-400 block">Engine</span>
                     <span className="font-medium text-blue-400 text-xs">
-                      {triageResult.usedFallback ? 'Heuristic' : 'Gemini AI'}
+                      {triageResult.usedFallback ? 'Heuristic' : 'Live LLM'}
                     </span>
                   </div>
                   <div className="p-2.5 rounded-lg border border-[#1d222e] bg-[#0c0e14]">
@@ -427,7 +427,7 @@ export default function TriageStudioPage() {
                     Engine
                   </th>
                   <th scope="col" className="py-2.5 px-3">
-                    Latency
+                    Confidence
                   </th>
                   <th scope="col" className="py-2.5 px-3">
                     Review Status
@@ -446,13 +446,33 @@ export default function TriageStudioPage() {
                   </tr>
                 ) : (
                   logs.map((log) => {
-                    const isEvaluated = log.dispatcherAgreed !== null;
+                    const promptText = log.rawPromptText || log.inputDescription || '—';
+                    const isEvaluated = Boolean(
+                      log.evaluatedAt ||
+                        log.dispatcherOverrideUrgency ||
+                        (log.dispatcherAgreed !== null && log.dispatcherAgreed !== undefined)
+                    );
+                    const isAgreed =
+                      log.dispatcherAgreed === true ||
+                      (Boolean(log.dispatcherOverrideUrgency) &&
+                        log.dispatcherOverrideUrgency === log.predictedUrgency);
+                    const isOverridden =
+                      log.dispatcherAgreed === false ||
+                      (Boolean(log.dispatcherOverrideUrgency) &&
+                        log.dispatcherOverrideUrgency !== log.predictedUrgency);
+                    const overrideTarget = log.dispatcherOverrideUrgency || log.overrideUrgency;
                     const isPending = evaluatingLogId === log.id;
+                    const confidenceScore = Number(log.confidenceScore) || 0;
+                    const confidencePct = Math.round(
+                      confidenceScore <= 1 ? confidenceScore * 100 : confidenceScore
+                    );
 
                     return (
                       <tr key={log.id} className="hover:bg-[#151923] transition-colors">
-                        <td className="py-2.5 px-3 text-slate-300 max-w-xs truncate font-medium">
-                          {log.inputDescription}
+                        <td className="py-2.5 px-3 text-slate-300 max-w-sm font-medium">
+                          <span className="line-clamp-2" title={promptText}>
+                            {promptText}
+                          </span>
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <PriorityBadge priority={log.predictedUrgency} />
@@ -467,21 +487,21 @@ export default function TriageStudioPage() {
                             <span className="text-blue-400 text-[11px] font-medium">LLM</span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">
-                          {log.latencyMs}ms
+                        <td className="py-2.5 px-3 text-slate-300 font-mono text-[11px] whitespace-nowrap">
+                          {confidencePct}%
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
-                          {log.dispatcherAgreed === true && (
+                          {isEvaluated && isAgreed && (
                             <span className="inline-flex items-center gap-1 text-emerald-400 font-medium text-xs">
                               <Check className="w-3.5 h-3.5" /> Agreed
                             </span>
                           )}
-                          {log.dispatcherAgreed === false && (
-                            <span className="inline-flex items-center gap-1 text-red-400 font-medium text-xs">
-                              <XCircle className="w-3.5 h-3.5" /> Overridden ({log.overrideUrgency})
+                          {isEvaluated && isOverridden && (
+                            <span className="inline-flex items-center gap-1 text-amber-400 font-medium text-xs">
+                              <XCircle className="w-3.5 h-3.5" /> Overridden ({overrideTarget})
                             </span>
                           )}
-                          {log.dispatcherAgreed === null && (
+                          {!isEvaluated && (
                             <span className="text-slate-500 text-xs">Pending Review</span>
                           )}
                         </td>

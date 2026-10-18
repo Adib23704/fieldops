@@ -1,7 +1,5 @@
-import dotenv from 'dotenv';
+import 'dotenv/config'
 import { z } from 'zod';
-
-dotenv.config();
 
 const envSchema = z.object({
   PORT: z
@@ -14,7 +12,7 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('24h'),
   AI_API_KEY: z.string().optional().default(''),
   AI_API_URL: z.string().default('https://api.groq.com/openai/v1/chat/completions'),
-  AI_MODEL: z.string().default('llama-3.3-70b-versatile'),
+  AI_MODEL: z.string().default('openai/gpt-oss-120b'),
 });
 
 const parsed = envSchema.safeParse(process.env);
