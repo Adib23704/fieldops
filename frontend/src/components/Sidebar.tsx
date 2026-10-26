@@ -75,7 +75,7 @@ export const Sidebar: React.FC = () => {
 
   const allowedNav = navLinks.filter((item) => item.roles.includes(user.role));
 
-  const NavContent = () => (
+  const navContent = (
     <div className="flex flex-col h-full bg-[#0a0c10] border-r border-[#1b202c]">
       <div className="p-4 border-b border-[#1b202c]">
         <Link
@@ -194,13 +194,13 @@ export const Sidebar: React.FC = () => {
             className="fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity"
           />
           <div className="relative w-64 max-w-xs flex-1 flex flex-col z-10 shadow-2xl">
-            <NavContent />
+            {navContent}
           </div>
         </div>
       )}
 
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 lg:fixed lg:inset-y-0 z-30">
-        <NavContent />
+        {navContent}
       </aside>
     </>
   );
